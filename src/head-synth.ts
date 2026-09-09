@@ -16,7 +16,7 @@ export function buildSynthesisPrompt(userPrompt: string, drafts: WorkerResult[])
   return `[작업]\n${userPrompt}\n\n[${drafts.length}개 AI 초안]\n${blocks}\n\n위 초안들을 종합해 하나의 최종 결과물을 작성하라.`
 }
 
-/** 생성 Head — 여러 초안을 작업 규칙을 지키며 하나로 종합한다. */
+/** 생성 Head · 여러 초안을 작업 규칙을 지키며 하나로 종합한다. */
 export async function synthesize(
   system: string,
   prompt: string,

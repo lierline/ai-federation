@@ -1,4 +1,4 @@
-# AI Federation — 크로스플랫폼 공유 패키지 스펙 (v1)
+# AI Federation · 크로스플랫폼 공유 패키지 스펙 (v1)
 
 - **날짜**: 2026-07-14
 - **상태**: 설계 합의 완료 → 사용자 스펙 리뷰 대기
@@ -9,12 +9,12 @@
 ## 1. 배경 & 목표
 
 **계보 (실제 코드 기준)**
-- **Q-Atelier `lib/ai/head-ensemble.ts`** — 원조. "여러 fast AI 초안 → Opus Head 종합"의 **생성(발산) 앙상블**. 8개 API에 통합, 파일럿 6전6승으로 검증된 운영 자산. Vercel AI SDK 사용.
-- **Veris `claude/ai-federation` 브랜치** — 그 아이디어를 3사(Claude·GPT·Gemini)+Head+접지+검증으로 일반화한 **판단(정확도) 페더레이션**. 강제 tool-use로 JSON 견고. 단 CLI만·미배포·미머지, 모델 ID 구형.
+- **Q-Atelier `lib/ai/head-ensemble.ts`** · 원조. "여러 fast AI 초안 → Opus Head 종합"의 **생성(발산) 앙상블**. 8개 API에 통합, 파일럿 6전6승으로 검증된 운영 자산. Vercel AI SDK 사용.
+- **Veris `claude/ai-federation` 브랜치** · 그 아이디어를 3사(Claude·GPT·Gemini)+Head+접지+검증으로 일반화한 **판단(정확도) 페더레이션**. 강제 tool-use로 JSON 견고. 단 CLI만·미배포·미머지, 모델 ID 구형.
 
 **목표**
 - 두 모양을 **하나의 크로스플랫폼 공유 패키지**로 통합해, 모든 플랫폼(Q-Atelier·Login·Veris·MedQraft)에서 `import`해 쓰는 **"AI 기본 기능"**으로 승격.
-- 핵심 가치: **다중 AI 합의로 판단 정확도를 올리고, 생성 품질도 올린다** — "AI를 쓸 때마다" 재사용.
+- 핵심 가치: **다중 AI 합의로 판단 정확도를 올리고, 생성 품질도 올린다** · "AI를 쓸 때마다" 재사용.
 
 ---
 
@@ -22,15 +22,15 @@
 
 **포함**
 - 공용 **병렬 엔진** (fan-out · 타임아웃 · graceful degradation)
-- **생성 모드** (`ensemble`) — 여러 초안 → Head 종합, 스트리밍 지원
-- **판단 모드** (`federate`) — 같은 질문 3사 답 → Head 신뢰도 재평가 + **확신도(0~1)**
+- **생성 모드** (`ensemble`) · 여러 초안 → Head 종합, 스트리밍 지원
+- **판단 모드** (`federate`) · 같은 질문 3사 답 → Head 신뢰도 재평가 + **확신도(0~1)**
 - 최신 모델 ID + env 오버라이드
 - 패키지 자체 테스트용 **CLI + eval 하네스**
 
 **제외 → v2로 이연**
 - 적대적 검증(`verify`)
 - 실시간 웹서치 접지(`grounded`)
-- 실제 앱 통합 (파일럿은 v1 이후 별도 단계 — §8)
+- 실제 앱 통합 (파일럿은 v1 이후 별도 단계 · §8)
 
 ---
 
@@ -81,7 +81,7 @@ ensemble(opts: {
 ensembleStream(opts): StreamResult           // 생성 스트리밍 변형(draft UX용)
 ```
 
-**공용 내부 엔진**: `fanOut(models, system, prompt, timeout)` — `Promise.allSettled` 병렬 + 개별 타임아웃 → 성공 draft 수집.
+**공용 내부 엔진**: `fanOut(models, system, prompt, timeout)` · `Promise.allSettled` 병렬 + 개별 타임아웃 → 성공 draft 수집.
 
 **설정/키**: env `ANTHROPIC_API_KEY`·`OPENAI_API_KEY`·`GOOGLE_API_KEY` (+ `*_MODEL` 오버라이드). 키 없는 provider는 자동 제외(graceful 축소).
 
@@ -133,7 +133,7 @@ ai-federation/
 
 1. **패키지 repo 스캐폴드** + 양쪽 자산 통합 이식 + 최신 모델 (writing-plans로 태스크화)
 2. **CLI/eval 실제 구동 검증** (수용 기준 §7)
-3. **파일럿 통합 1개 플랫폼** — 후속 결정(§9)
+3. **파일럿 통합 1개 플랫폼** · 후속 결정(§9)
 4. git dependency로 나머지 앱 배선 (후속)
 
 ---

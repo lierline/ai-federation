@@ -1,7 +1,7 @@
-# AI Federation 공유 패키지 v1 — 구현 계획
+# AI Federation 공유 패키지 v1 · 구현 계획
 
 **목표:** Claude·GPT·Gemini 병렬 응답을 Opus Head가 종합(생성)·재평가(판단)하는 크로스플랫폼 공유 패키지 `@lierline/ai-federation`을 실제 운영 가능하게 만든다.
-**아키텍처:** 공용 병렬 엔진(`runWorkers`) 위에 Head 2전략을 얹는다 — `synthesize`(생성: 여러 초안→하나) · `judge`(판단: 신뢰도 재평가+확신도, `generateText`+`Output.object`+zod). 각 앱은 git dependency로 in-process import. 의존성 주입(deps)으로 네트워크 없이 오케스트레이션까지 단위테스트.
+**아키텍처:** 공용 병렬 엔진(`runWorkers`) 위에 Head 2전략을 얹는다 · `synthesize`(생성: 여러 초안→하나) · `judge`(판단: 신뢰도 재평가+확신도, `generateText`+`Output.object`+zod). 각 앱은 git dependency로 in-process import. 의존성 주입(deps)으로 네트워크 없이 오케스트레이션까지 단위테스트.
 **기술 스택:** TS(strict, ESM) · Node 24 · `ai@^6` · `@ai-sdk/{anthropic,openai,google}@^3` · `zod@^4` · `vitest@^4` · `dotenv` · `tsx`(CLI).
 
 ## 전역 제약
@@ -93,7 +93,7 @@
 - **파일:** 생성 `src/types.ts`, 테스트 `src/types.test.ts`
 - **인터페이스(생산):** `ProviderId` · `WorkerResult` · `ReliabilityJudgment` · `HeadReview` · `FederationResult` · `EnsembleTier` · `EnsembleResult`
 - **단계:**
-  - [ ] 1. 실패 테스트 작성 — `src/types.test.ts`:
+  - [ ] 1. 실패 테스트 작성 · `src/types.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import type { WorkerResult, FederationResult } from './types.js'
@@ -111,7 +111,7 @@
     })
     ```
   - [ ] 2. `pnpm test` → 실패(`PROVIDER_IDS` 없음 / 모듈 없음).
-  - [ ] 3. 구현 — `src/types.ts`:
+  - [ ] 3. 구현 · `src/types.ts`:
     ```ts
     export const PROVIDER_IDS = ['claude', 'openai', 'gemini'] as const
     export type ProviderId = (typeof PROVIDER_IDS)[number]
@@ -161,7 +161,7 @@
 - **파일:** 생성 `src/config.ts`, 테스트 `src/config.test.ts`
 - **인터페이스(생산):** `models` · `limits` · `missingKeys(): string[]` · `withTimeout<T>(p, ms, label): Promise<T>` · `geminiKey(): string | undefined`
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/config.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/config.test.ts`:
     ```ts
     import { describe, it, expect, beforeEach, afterEach } from 'vitest'
     import { missingKeys, withTimeout, geminiKey } from './config.js'
@@ -186,7 +186,7 @@
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/config.ts`:
+  - [ ] 3. 구현 · `src/config.ts`:
     ```ts
     import { config as loadEnv } from 'dotenv'
     loadEnv({ path: '.env.local' })
@@ -230,7 +230,7 @@
 - **인터페이스(소비):** `config.models` · `geminiKey` / **(생산):** `workerSpecs(): WorkerSpec[]` · `enabledWorkerSpecs()` · `headModel()`
   - `WorkerSpec = { provider: ProviderId; model: string; enabled(): boolean; build(): LanguageModel }`
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/models.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/models.test.ts`:
     ```ts
     import { describe, it, expect, beforeEach, afterEach } from 'vitest'
     import { workerSpecs, enabledWorkerSpecs } from './models.js'
@@ -251,7 +251,7 @@
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/models.ts`:
+  - [ ] 3. 구현 · `src/models.ts`:
     ```ts
     import { anthropic } from '@ai-sdk/anthropic'
     import { openai } from '@ai-sdk/openai'
@@ -292,7 +292,7 @@
 - **인터페이스(생산):** `Worker = { provider; model; run(signal): Promise<string> }` · `runWorkers(workers, timeoutMs): Promise<WorkerResult[]>`
 - **핵심:** 각 워커를 독립 타임아웃으로 실행, 성공/실패/소요ms를 `WorkerResult`로. 한 워커 실패가 전체를 막지 않음.
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/engine.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/engine.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { runWorkers, type Worker } from './engine.js'
@@ -317,7 +317,7 @@
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/engine.ts`:
+  - [ ] 3. 구현 · `src/engine.ts`:
     ```ts
     import type { ProviderId, WorkerResult } from './types.js'
 
@@ -345,11 +345,11 @@
 
 ---
 
-## Task 5: 판단 Head — 프롬프트·스키마·clamp (`src/head-judge.ts` 순수부)
+## Task 5: 판단 Head · 프롬프트·스키마·clamp (`src/head-judge.ts` 순수부)
 - **파일:** 생성 `src/head-judge.ts`, 테스트 `src/head-judge.test.ts`
 - **인터페이스(생산):** `reviewSchema`(zod) · `buildJudgePrompt(question, workers): string` · `clamp01(n): number` · `toHeadReview(raw): HeadReview`
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/head-judge.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/head-judge.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { reviewSchema, buildJudgePrompt, clamp01, toHeadReview } from './head-judge.js'
@@ -379,7 +379,7 @@
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/head-judge.ts`:
+  - [ ] 3. 구현 · `src/head-judge.ts`:
     ```ts
     import { z } from 'zod'
     import type { HeadReview, ProviderId, WorkerResult } from './types.js'
@@ -439,7 +439,7 @@ ${blocks}`
 - **인터페이스(소비):** `generateText`+`Output.object`(ai) · `headModel()` / **(생산):** `judge(question, workers, deps?): Promise<HeadReview>`
   - `deps.callHead(prompt): Promise<ReviewRaw>` 를 주입 가능(기본은 실제 `generateText`) → 네트워크 없이 테스트.
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/head-judge.call.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/head-judge.call.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { judge } from './head-judge.js'
@@ -457,7 +457,7 @@ ${blocks}`
     })
     ```
   - [ ] 2. `pnpm test` → 실패(`judge` 없음).
-  - [ ] 3. 구현 추가 — `src/head-judge.ts` 하단:
+  - [ ] 3. 구현 추가 · `src/head-judge.ts` 하단:
     ```ts
     import { generateText, Output } from 'ai'
     import { headModel } from './models.js'
@@ -485,7 +485,7 @@ ${blocks}`
     }
     ```
   - [ ] 4. `pnpm test` → 통과.
-  - [ ] 5. 커밋: `feat(head-judge): judge() — generateText+Output.object 호출(주입 가능)`
+  - [ ] 5. 커밋: `feat(head-judge): judge() · generateText+Output.object 호출(주입 가능)`
 
 ---
 
@@ -494,7 +494,7 @@ ${blocks}`
 - **인터페이스(소비):** `enabledWorkerSpecs` · `runWorkers` · `judge` / **(생산):** `federate(question, opts?, deps?): Promise<FederationResult>`
   - `deps = { collect?: (q) => Promise<WorkerResult[]>; judge?: typeof judge }` 주입 가능.
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/federate.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/federate.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { federate } from './federate.js'
@@ -524,7 +524,7 @@ ${blocks}`
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/federate.ts`:
+  - [ ] 3. 구현 · `src/federate.ts`:
     ```ts
     import { enabledWorkerSpecs } from './models.js'
     import { runWorkers } from './engine.js'
@@ -579,7 +579,7 @@ ${blocks}`
   - `deps = { collect?; synth?; single? }` 주입 가능.
 - **핵심 분기:** `single`→단일 Haiku / `consensus`→fast 첫 초안(Head 스킵) / `head`→Opus 종합. fast 전부 실패→단일 폴백(degraded). Head 실패→최장 초안(degraded).
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/ensemble.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/ensemble.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { ensemble } from './ensemble.js'
@@ -610,7 +610,7 @@ ${blocks}`
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/head-synth.ts`:
+  - [ ] 3. 구현 · `src/head-synth.ts`:
     ```ts
     import { generateText } from 'ai'
     import { headModel } from './models.js'
@@ -637,7 +637,7 @@ ${blocks}`
       return text.trim()
     }
     ```
-    구현 — `src/ensemble.ts`:
+    구현 · `src/ensemble.ts`:
     ```ts
     import { generateText } from 'ai'
     import { anthropic } from '@ai-sdk/anthropic'
@@ -701,7 +701,7 @@ ${blocks}`
 ## Task 9: 공개 배럴 (`src/index.ts`)
 - **파일:** 수정 `src/index.ts`, 테스트 `src/index.test.ts`
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/index.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/index.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import * as api from './index.js'
@@ -712,7 +712,7 @@ ${blocks}`
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/index.ts`:
+  - [ ] 3. 구현 · `src/index.ts`:
     ```ts
     export { federate } from './federate.js'
     export { ensemble } from './ensemble.js'
@@ -731,7 +731,7 @@ ${blocks}`
 - **파일:** 생성 `src/cli.ts`, 테스트 `src/cli-format.test.ts`(출력 포매터만 순수 테스트)
 - **인터페이스(생산):** `formatFederation(r): string` · CLI 엔트리(`ask <질문>` = ensemble/head 스트림 대신 텍스트, `judge <질문>` = federate)
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/cli-format.test.ts`:
+  - [ ] 1. 실패 테스트 · `src/cli-format.test.ts`:
     ```ts
     import { describe, it, expect } from 'vitest'
     import { formatFederation } from './cli.js'
@@ -743,7 +743,7 @@ ${blocks}`
     })
     ```
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `src/cli.ts` (`formatFederation` export + `main()`가 `process.argv` 파싱: `ask`→`ensemble({tier:'head'})` 출력, `judge`→`federate` 후 `formatFederation`; `missingKeys()` 있으면 안내 후 종료). `import.meta.url` 엔트리가드로 `main()` 실행.
+  - [ ] 3. 구현 · `src/cli.ts` (`formatFederation` export + `main()`가 `process.argv` 파싱: `ask`→`ensemble({tier:'head'})` 출력, `judge`→`federate` 후 `formatFederation`; `missingKeys()` 있으면 안내 후 종료). `import.meta.url` 엔트리가드로 `main()` 실행.
   - [ ] 4. `pnpm test` → 통과.
   - [ ] 5. 커밋: `feat(cli): ask/judge 커맨드 + 판단 결과 포매터`
 
@@ -752,15 +752,15 @@ ${blocks}`
 ## Task 11: eval 하네스 (`src/eval/`)
 - **파일:** 생성 `src/eval/dataset.ts`(질문+기대핵심 케이스, Veris eval/dataset 이식·정리) · `src/eval/run.ts`(각 케이스 federate → confidence·정답포함 집계 출력) · 테스트 `src/eval/grade.test.ts`
 - **단계:**
-  - [ ] 1. 실패 테스트 — `src/eval/grade.test.ts`: `gradeContains(answer, expectedKeywords)` 가 키워드 포함율을 0..1 로 반환하는지.
+  - [ ] 1. 실패 테스트 · `src/eval/grade.test.ts`: `gradeContains(answer, expectedKeywords)` 가 키워드 포함율을 0..1 로 반환하는지.
   - [ ] 2. `pnpm test` → 실패.
-  - [ ] 3. 구현 — `grade.ts`(`gradeContains`) + `dataset.ts`(케이스 5개 내외) + `run.ts`(federate 호출·집계, 네트워크). run.ts 는 테스트 대상 아님(통합).
+  - [ ] 3. 구현 · `grade.ts`(`gradeContains`) + `dataset.ts`(케이스 5개 내외) + `run.ts`(federate 호출·집계, 네트워크). run.ts 는 테스트 대상 아님(통합).
   - [ ] 4. `pnpm test` → 통과.
   - [ ] 5. 커밋: `feat(eval): 채점 유틸 + 평가셋 + 실행 하네스`
 
 ---
 
-## Task 12: 통합 구동 검증 (수용 기준 §7) — 네트워크
+## Task 12: 통합 구동 검증 (수용 기준 §7) · 네트워크
 - **파일:** 없음(실행/문서). `.env.local` 에 실제 키(최소 Anthropic+OpenAI).
 - **단계:**
   - [ ] 1. `cp .env.example .env.local` → 키 입력(오너가 직접).
@@ -782,7 +782,7 @@ ${blocks}`
 
 ---
 
-## 파일럿 통합(후속 계획, 별도 세션) — **Login 필수 포함**
+## 파일럿 통합(후속 계획, 별도 세션) · **Login 필수 포함**
 - Login·Q-Atelier·Veris 각 `package.json` 에 git dependency 추가 → 기존 AI 진입점 1곳을 `federate`/`ensemble` 로 교체하는 최소 슬라이스부터.
 - Q-Atelier 는 기존 `lib/ai/head-ensemble.ts` 를 패키지 `ensemble` 로 점진 대체(어댑터 우선, 8개 라우트 일괄 금지).
 - 통합 순서는 v1 코어(Task 0~13) 완료 후 별도 brainstorming → writing-plans.

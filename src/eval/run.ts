@@ -5,7 +5,7 @@ import { DATASET } from './dataset.js'
 import { gradeContains } from './grade.js'
 
 /**
- * 평가 하네스 — 각 케이스를 federate 로 돌려 최종답변의 키워드 포함율(정확도)과
+ * 평가 하네스 · 각 케이스를 federate 로 돌려 최종답변의 키워드 포함율(정확도)과
  * Head 확신도를 집계한다. 실제 모델 호출(네트워크)이라 단위테스트 대상이 아니다.
  */
 async function main(): Promise<number> {

@@ -22,7 +22,7 @@ export function formatFederation(r: FederationResult): string {
   if (r.head) {
     lines.push('── Head 신뢰도 ──')
     for (const rk of r.head.rankings) {
-      lines.push(`• ${rk.provider}: ${rk.reliability.toFixed(2)} — ${rk.rationale}`)
+      lines.push(`• ${rk.provider}: ${rk.reliability.toFixed(2)} · ${rk.rationale}`)
     }
     if (r.head.consensus) lines.push(`\n합의: ${r.head.consensus}`)
     if (r.head.conflicts) lines.push(`상충: ${r.head.conflicts}`)
@@ -30,7 +30,7 @@ export function formatFederation(r: FederationResult): string {
     lines.push(`✅ 최종답변 (확신도 ${r.head.confidence.toFixed(2)}):`)
     lines.push(r.head.finalAnswer)
   } else {
-    lines.push(`⚠ Head 없음 — ${r.headError ?? '알 수 없음'}`)
+    lines.push(`⚠ Head 없음 · ${r.headError ?? '알 수 없음'}`)
   }
   lines.push('')
   lines.push(`(${r.ms}ms)`)
@@ -38,8 +38,8 @@ export function formatFederation(r: FederationResult): string {
 }
 
 const USAGE = `사용법:
-  aifed judge "질문"    판단 모드 — 3사 답 → Head 신뢰도 재평가 + 확신도
-  aifed ask "작업"      생성 모드 — 여러 초안 → Head 종합`
+  aifed judge "질문"    판단 모드 · 3사 답 → Head 신뢰도 재평가 + 확신도
+  aifed ask "작업"      생성 모드 · 여러 초안 → Head 종합`
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv
@@ -53,7 +53,7 @@ async function main(argv: string[]): Promise<number> {
     return 1
   }
   const missing = missingKeys()
-  if (missing.length) console.error(`(참고) 미설정 키: ${missing.join(', ')} — 해당 provider 는 제외하고 진행합니다.\n`)
+  if (missing.length) console.error(`(참고) 미설정 키: ${missing.join(', ')} · 해당 provider 는 제외하고 진행합니다.\n`)
 
   if (command === 'judge') {
     const r = await federate(input)

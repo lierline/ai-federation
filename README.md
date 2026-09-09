@@ -15,8 +15,8 @@ Claude · GPT · Gemini 세 AI에게 같은 작업을 **병렬**로 보내고, �
 
 | 함수 | 목적 | 출력 |
 | --- | --- | --- |
-| `ensemble(opts)` | **생성 품질** — 여러 초안을 Head가 하나로 종합 | 최종 텍스트 |
-| `federate(question)` | **판단 정확도** — 같은 질문 3사 답 → 신뢰도 재평가 | 랭킹 + 합의/상충 + **확신도(0~1)** |
+| `ensemble(opts)` | **생성 품질** · 여러 초안을 Head가 하나로 종합 | 최종 텍스트 |
+| `federate(question)` | **판단 정확도** · 같은 질문 3사 답 → 신뢰도 재평가 | 랭킹 + 합의/상충 + **확신도(0~1)** |
 
 ## 설치
 
@@ -59,4 +59,4 @@ pnpm eval                                     # 평가 하네스
 
 ## 상태
 
-v1 — 코어(생성·판단·확신도·graceful degradation·CLI·eval). 적대적 검증(verify)·웹서치 접지(grounded)는 v2 예정.
+v1 · 코어(생성·판단·확신도·graceful degradation·CLI·eval). 적대적 검증(verify)·웹서치 접지(grounded)는 v2 예정.
