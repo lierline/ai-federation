@@ -9,7 +9,7 @@ export declare const limits: {
     workerTimeoutMs: () => number;
     headTimeoutMs: () => number;
 };
-/** Gemini 키 — GOOGLE_API_KEY 우선, 없으면 GEMINI_API_KEY 폴백(플랫폼별 명칭 차이 흡수). */
+/** Gemini 키 · GOOGLE_API_KEY 우선, 없으면 GEMINI_API_KEY 폴백(플랫폼별 명칭 차이 흡수). */
 export declare function geminiKey(): string | undefined;
 /** 누락된 키를 사람이 읽을 수 있게 반환(실행 전 점검). */
 export declare function missingKeys(): string[];

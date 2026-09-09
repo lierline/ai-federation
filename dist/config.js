@@ -13,7 +13,7 @@ export const limits = {
     workerTimeoutMs: () => Number(process.env.WORKER_TIMEOUT_MS) || 30_000,
     headTimeoutMs: () => Number(process.env.HEAD_TIMEOUT_MS) || 60_000,
 };
-/** Gemini 키 — GOOGLE_API_KEY 우선, 없으면 GEMINI_API_KEY 폴백(플랫폼별 명칭 차이 흡수). */
+/** Gemini 키 · GOOGLE_API_KEY 우선, 없으면 GEMINI_API_KEY 폴백(플랫폼별 명칭 차이 흡수). */
 export function geminiKey() {
     return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || undefined;
 }

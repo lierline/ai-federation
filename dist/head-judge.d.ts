@@ -23,6 +23,6 @@ export interface JudgeDeps {
     /** 주입 가능한 Head 호출(기본은 실제 generateText+Output.object). 네트워크 없이 테스트하려면 대체. */
     callHead?: (prompt: string) => Promise<ReviewRaw>;
 }
-/** 판단 Head — 세 답변의 신뢰도를 재평가하고 종합 최종 답변을 낸다(구조화 출력으로 파싱 실패 없음). */
+/** 판단 Head · 세 답변의 신뢰도를 재평가하고 종합 최종 답변을 낸다(구조화 출력으로 파싱 실패 없음). */
 export declare function judge(question: string, workers: WorkerResult[], deps?: JudgeDeps): Promise<HeadReview>;
 //# sourceMappingURL=head-judge.d.ts.map

@@ -1,6 +1,6 @@
 import type { WorkerResult } from './types.js';
 export declare const HEAD_SYNTHESIS_GUIDE = "\n\n# \uC885\uD569 \uC9C0\uCE68 (Head)\n\uB2F9\uC2E0\uC740 \uC704 \uC5ED\uD560\uC5D0 \uB354\uD574, \uB3D9\uC77C \uC791\uC5C5\uC5D0 \uB300\uD55C \uC5EC\uB7EC AI \uCD08\uC548\uC744 \uACE0\uCC28\uC6D0\uC801\uC73C\uB85C \uC885\uD569\uD558\uB294 \uCD5C\uC885 Head \uC804\uBB38\uAC00\uB2E4.\n- \uAC01 \uCD08\uC548\uC758 \uAC15\uC810\uC744 \uCDE8\uD558\uACE0 \uC624\uB958\u00B7\uB204\uB77D\u00B7\uC911\uBCF5\uC744 \uBCF4\uC815\uD574 \uD558\uB098\uC758 \uCD5C\uC885 \uACB0\uACFC\uBB3C\uC744 \uB9CC\uB4E0\uB2E4.\n- \uC704 \uC791\uC5C5 \uADDC\uCE59\uC744 \uADF8\uB300\uB85C \uC9C0\uD0A8\uB2E4. \uCD08\uC548\uC5D0 \uC5C6\uB294 \uC0AC\uC2E4\uC744 \uC0C8\uB85C \uC9C0\uC5B4\uB0B4\uC9C0 \uC54A\uB294\uB2E4.\n- \uB77C\uBCA8\u00B7\uBA38\uB9AC\uB9D0 \uC5C6\uC774 \uBCF8\uBB38\uB9CC \uCD9C\uB825\uD55C\uB2E4.";
 export declare function buildSynthesisPrompt(userPrompt: string, drafts: WorkerResult[]): string;
-/** 생성 Head — 여러 초안을 작업 규칙을 지키며 하나로 종합한다. */
+/** 생성 Head · 여러 초안을 작업 규칙을 지키며 하나로 종합한다. */
 export declare function synthesize(system: string, prompt: string, drafts: WorkerResult[], maxTokens: number): Promise<string>;
 //# sourceMappingURL=head-synth.d.ts.map

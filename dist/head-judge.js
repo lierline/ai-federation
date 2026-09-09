@@ -60,7 +60,7 @@ async function defaultCallHead(prompt) {
     }), limits.headTimeoutMs(), 'head');
     return output;
 }
-/** 판단 Head — 세 답변의 신뢰도를 재평가하고 종합 최종 답변을 낸다(구조화 출력으로 파싱 실패 없음). */
+/** 판단 Head · 세 답변의 신뢰도를 재평가하고 종합 최종 답변을 낸다(구조화 출력으로 파싱 실패 없음). */
 export async function judge(question, workers, deps = {}) {
     const call = deps.callHead ?? defaultCallHead;
     const raw = await call(buildJudgePrompt(question, workers));

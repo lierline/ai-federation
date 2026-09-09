@@ -2,7 +2,7 @@ import type { ProviderId, WorkerResult } from './types.js';
 export interface Worker {
     provider: ProviderId;
     model: string;
-    /** signal 은 타임아웃 시 abort 됨 — 실제 네트워크 호출은 이걸로 조기 취소한다. */
+    /** signal 은 타임아웃 시 abort 됨 · 실제 네트워크 호출은 이걸로 조기 취소한다. */
     run: (signal: AbortSignal) => Promise<string>;
 }
 /**

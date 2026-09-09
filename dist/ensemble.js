@@ -32,7 +32,7 @@ async function defaultSingle(o) {
     return text.trim();
 }
 /**
- * 생성 모드 — 여러 fast AI 초안을 Head 가 하나로 종합한다.
+ * 생성 모드 · 여러 fast AI 초안을 Head 가 하나로 종합한다.
  * tier: head(Opus 종합) / consensus(fast 첫 초안, Head 스킵) / single(단일 fast).
  * graceful: fast 전부 실패→단일 폴백(degraded) / Head 실패→최장 초안 반환(degraded).
  */
