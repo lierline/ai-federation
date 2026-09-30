@@ -1,6 +1,6 @@
 {
   "name": "@lierline/ai-federation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -11,21 +11,22 @@
       "import": "./dist/index.js"
     }
   },
-  "bin": { "aifed": "./dist/cli.js" },
-  "files": ["dist"],
+  "bin": {
+    "aifed": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "ask": "tsx src/cli.ts ask",
     "judge": "tsx src/cli.ts judge",
     "eval": "tsx src/eval/run.ts",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:models": "tsx src/eval/models-eval.ts"
   },
   "dependencies": {
-    "ai": "^6.0.191",
-    "@ai-sdk/anthropic": "^3.0.78",
-    "@ai-sdk/openai": "^3.0.64",
-    "@ai-sdk/google": "^3.0.88",
     "zod": "^4.4.3",
     "dotenv": "^16.4.5"
   },
@@ -33,6 +34,16 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "@types/node": "^22.10.0",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "ai": "^6.0.191",
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/openai": "^3.0.64",
+    "@ai-sdk/google": "^3.0.88"
+  },
+  "peerDependencies": {
+    "ai": "^6.0.0",
+    "@ai-sdk/anthropic": "^3.0.0",
+    "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/google": "^3.0.0"
   }
 }

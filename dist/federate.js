@@ -3,18 +3,20 @@ import { enabledWorkerSpecs } from './models.js';
 import { runWorkers } from './engine.js';
 import { judge as realJudge } from './head-judge.js';
 import { limits } from './config.js';
+import { reportUsage } from './providers.js';
 async function defaultCollect(question) {
     const specs = enabledWorkerSpecs();
     return runWorkers(specs.map((s) => ({
         provider: s.provider,
         model: s.model,
         run: async (signal) => {
-            const { text } = await generateText({
+            const { text, usage } = await generateText({
                 model: s.build(),
                 prompt: question,
                 maxOutputTokens: limits.maxTokens(),
                 abortSignal: signal,
             });
+            reportUsage(s.model, 'worker', usage);
             return text;
         },
     })), limits.workerTimeoutMs());

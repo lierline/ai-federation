@@ -3,8 +3,8 @@ import type { HeadReview, WorkerResult } from './types.js';
 export declare const reviewSchema: z.ZodObject<{
     rankings: z.ZodArray<z.ZodObject<{
         provider: z.ZodEnum<{
-            claude: "claude";
             openai: "openai";
+            claude: "claude";
             gemini: "gemini";
         }>;
         reliability: z.ZodNumber;

@@ -1,9 +1,4 @@
-export declare const models: {
-    claudeWorker: () => string;
-    openaiWorker: () => string;
-    geminiWorker: () => string;
-    head: () => string;
-};
+export declare function loadLocalEnv(): void;
 export declare const limits: {
     maxTokens: () => number;
     workerTimeoutMs: () => number;

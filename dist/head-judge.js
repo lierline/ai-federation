@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { generateText, Output } from 'ai';
 import { headModel } from './models.js';
-import { limits, withTimeout } from './config.js';
+import { limits } from './config.js';
+import { modelId } from './registry.js';
+import { reportUsage } from './providers.js';
 const PROVIDER_LABEL = { claude: 'Claude', openai: 'GPT', gemini: 'Gemini' };
 export const reviewSchema = z.object({
     rankings: z.array(z.object({
@@ -52,12 +54,17 @@ export function toHeadReview(raw) {
     };
 }
 async function defaultCallHead(prompt) {
-    const { output } = await withTimeout(generateText({
+    // 🔑 상한을 넉넉히 둔다. 새 Opus 는 생각을 끌 수 없어 생각 토큰도 이 안에서 쓴다.
+    //    상한은 청구액이 아니다(쓴 만큼만 낸다). 모자라면 답이 잘려 판정이 통째로 실패한다.
+    //    타임아웃은 abortSignal 로 넘겨 실제 요청까지 끊는다(2026-08-11 감사 3번).
+    const { output, usage } = await generateText({
         model: headModel(),
         output: Output.object({ schema: reviewSchema }),
         prompt,
-        maxOutputTokens: Math.max(limits.maxTokens(), 2048),
-    }), limits.headTimeoutMs(), 'head');
+        maxOutputTokens: Math.max(limits.maxTokens(), 16_000),
+        abortSignal: AbortSignal.timeout(limits.headTimeoutMs()),
+    });
+    reportUsage(modelId('head'), 'head', usage);
     return output;
 }
 /** 판단 Head · 세 답변의 신뢰도를 재평가하고 종합 최종 답변을 낸다(구조화 출력으로 파싱 실패 없음). */

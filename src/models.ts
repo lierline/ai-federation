@@ -1,13 +1,7 @@
-import { anthropic } from '@ai-sdk/anthropic'
-import { openai } from '@ai-sdk/openai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { LanguageModel } from 'ai'
 import type { ProviderId } from './types.js'
-import { models, geminiKey } from './config.js'
-
-// @ai-sdk/google 는 기본 GOOGLE_GENERATIVE_AI_API_KEY 를 읽지만, 본 패키지는 GOOGLE_API_KEY
-// (없으면 GEMINI_API_KEY 폴백)로 통일 → 명시적 매핑.
-const google = createGoogleGenerativeAI({ apiKey: geminiKey() })
+import { modelFor, type TextRole } from './registry.js'
+import { hasKey, languageModel } from './providers.js'
 
 export interface WorkerSpec {
   provider: ProviderId
@@ -16,27 +10,24 @@ export interface WorkerSpec {
   build: () => LanguageModel
 }
 
+const WORKER_ROLES: Record<ProviderId, TextRole> = {
+  claude: 'worker.claude',
+  openai: 'worker.openai',
+  gemini: 'worker.gemini',
+}
+
+/** 3사 병렬 워커. 모델은 등록부의 worker.* 역할이 정한다. 키가 없는 제공자는 enabled()=false. */
 export function workerSpecs(): WorkerSpec[] {
-  return [
-    {
-      provider: 'claude',
-      model: models.claudeWorker(),
-      enabled: () => !!process.env.ANTHROPIC_API_KEY,
-      build: () => anthropic(models.claudeWorker()),
-    },
-    {
-      provider: 'openai',
-      model: models.openaiWorker(),
-      enabled: () => !!process.env.OPENAI_API_KEY,
-      build: () => openai(models.openaiWorker()),
-    },
-    {
-      provider: 'gemini',
-      model: models.geminiWorker(),
-      enabled: () => !!geminiKey(),
-      build: () => google(models.geminiWorker()),
-    },
-  ]
+  return (Object.keys(WORKER_ROLES) as ProviderId[]).map((provider) => {
+    const role = WORKER_ROLES[provider]
+    const m = modelFor(role)
+    return {
+      provider,
+      model: m.id,
+      enabled: () => hasKey(m.provider),
+      build: () => languageModel(role),
+    }
+  })
 }
 
 export function enabledWorkerSpecs(): WorkerSpec[] {
@@ -44,5 +35,5 @@ export function enabledWorkerSpecs(): WorkerSpec[] {
 }
 
 export function headModel(): LanguageModel {
-  return anthropic(models.head())
+  return languageModel('head')
 }

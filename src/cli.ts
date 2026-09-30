@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { loadLocalEnv } from './config.js'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { federate } from './federate.js'
@@ -40,6 +41,8 @@ export function formatFederation(r: FederationResult): string {
 const USAGE = `사용법:
   aifed judge "질문"    판단 모드 · 3사 답 → Head 신뢰도 재평가 + 확신도
   aifed ask "작업"      생성 모드 · 여러 초안 → Head 종합`
+
+loadLocalEnv()
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv

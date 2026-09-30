@@ -1,7 +1,18 @@
 import { generateText } from 'ai'
 import { headModel } from './models.js'
-import { limits, withTimeout } from './config.js'
+import { limits } from './config.js'
+import { modelId } from './registry.js'
+import { reportUsage, thinksByDefault } from './providers.js'
 import type { WorkerResult } from './types.js'
+
+/**
+ * Head 출력 상한. 호출 측의 maxTokens 는 «본문 길이» 뜻으로 쓰여 왔다(예: 1200).
+ * 생각을 끌 수 없는 새 모델은 그 안에서 생각까지 해야 해서 본문이 잘린다.
+ * 본문 몫 + 생각 몫(8,000)으로 넓힌다. 상한은 청구액이 아니다.
+ */
+export function headOutputBudget(bodyTokens: number, headId = modelId('head')): number {
+  return thinksByDefault(headId) ? bodyTokens + 8_000 : bodyTokens
+}
 
 export const HEAD_SYNTHESIS_GUIDE = `
 
@@ -22,16 +33,16 @@ export async function synthesize(
   prompt: string,
   drafts: WorkerResult[],
   maxTokens: number,
+  timeoutMs: number = limits.headTimeoutMs(),
 ): Promise<string> {
-  const { text } = await withTimeout(
-    generateText({
-      model: headModel(),
-      system: system + HEAD_SYNTHESIS_GUIDE,
-      prompt: buildSynthesisPrompt(prompt, drafts),
-      maxOutputTokens: maxTokens,
-    }),
-    limits.headTimeoutMs(),
-    'head',
-  )
+  const { text, usage } = await generateText({
+    model: headModel(),
+    system: system + HEAD_SYNTHESIS_GUIDE,
+    prompt: buildSynthesisPrompt(prompt, drafts),
+    maxOutputTokens: headOutputBudget(maxTokens),
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(timeoutMs),
+  })
+  reportUsage(modelId('head'), 'head', usage)
   return text.trim()
 }

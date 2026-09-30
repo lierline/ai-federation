@@ -1,3 +1,4 @@
+import { loadLocalEnv } from '../config.js';
 import { federate } from '../federate.js';
 import { missingKeys } from '../config.js';
 import { enabledWorkerSpecs } from '../models.js';
@@ -7,6 +8,7 @@ import { gradeContains } from './grade.js';
  * 평가 하네스 · 각 케이스를 federate 로 돌려 최종답변의 키워드 포함율(정확도)과
  * Head 확신도를 집계한다. 실제 모델 호출(네트워크)이라 단위테스트 대상이 아니다.
  */
+loadLocalEnv();
 async function main() {
     if (enabledWorkerSpecs().length === 0) {
         console.error(`실행 가능한 provider 가 없습니다. .env.local 에 키를 설정하세요: ${missingKeys().join(', ')}`);

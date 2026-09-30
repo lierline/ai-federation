@@ -8,6 +8,13 @@ importers:
 
   .:
     dependencies:
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
       '@ai-sdk/anthropic':
         specifier: ^3.0.78
         version: 3.0.96(zod@4.4.3)
@@ -17,19 +24,12 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.64
         version: 3.0.84(zod@4.4.3)
-      ai:
-        specifier: ^6.0.191
-        version: 6.0.224(zod@4.4.3)
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.6.1
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1
+      ai:
+        specifier: ^6.0.191
+        version: 6.0.224(zod@4.4.3)
       tsx:
         specifier: ^4.19.2
         version: 4.23.1

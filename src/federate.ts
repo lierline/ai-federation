@@ -3,6 +3,7 @@ import { enabledWorkerSpecs } from './models.js'
 import { runWorkers } from './engine.js'
 import { judge as realJudge } from './head-judge.js'
 import { limits } from './config.js'
+import { reportUsage } from './providers.js'
 import type { FederationResult, HeadReview, WorkerResult } from './types.js'
 
 export interface FederateDeps {
@@ -17,12 +18,13 @@ async function defaultCollect(question: string): Promise<WorkerResult[]> {
       provider: s.provider,
       model: s.model,
       run: async (signal: AbortSignal) => {
-        const { text } = await generateText({
+        const { text, usage } = await generateText({
           model: s.build(),
           prompt: question,
           maxOutputTokens: limits.maxTokens(),
           abortSignal: signal,
         })
+        reportUsage(s.model, 'worker', usage)
         return text
       },
     })),
