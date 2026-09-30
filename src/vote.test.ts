@@ -115,4 +115,29 @@ describe('vote', () => {
     expect(r.unanimous).toBeNull()
     expect(r.majority).toBeNull()
   })
+
+  it('요청한 역할 중 spec 이 없는 회사는 «키 없음» 한 줄로 채우고, 둘 중 둘은 만장일치가 아니다', async () => {
+    const ask = vi.fn(asker({ claude: { name: '사과' }, openai: { name: '사과' } }))
+    const r = await vote(opts(), {
+      specs: () => [spec('claude'), spec('openai')],
+      ask,
+    })
+    expect(ask).toHaveBeenCalledTimes(2)
+    expect(r.answers).toHaveLength(3)
+    expect(r.answers[2]).toMatchObject({ provider: 'gemini', ok: false, error: '키 없음' })
+    expect(r.answered).toBe(2)
+    expect(r.unanimous).toBeNull()
+    expect(r.majority).toEqual({ value: { name: '사과' }, count: 2 })
+  })
+
+  it('roles 에 같은 회사가 겹쳐도 한 번만 묻고 한 줄만 낸다', async () => {
+    const ask = vi.fn(asker({ claude: { name: '사과' }, openai: { name: '사과' } }))
+    const r = await vote({ ...opts(), roles: ['claude', 'claude', 'openai'] }, {
+      specs: () => VOTE_ROLES.map((p) => spec(p)),
+      ask,
+    })
+    expect(ask).toHaveBeenCalledTimes(2)
+    expect(r.answers.map((a) => a.provider)).toEqual(['claude', 'openai'])
+    expect(r.unanimous).toEqual({ name: '사과' })
+  })
 })

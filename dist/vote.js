@@ -30,13 +30,16 @@ async function defaultAsk(spec, o) {
 }
 export function vote(o, deps = {}) {
     return withAiOperation(o.operation ?? 'vote', async () => {
-        const roles = o.roles ?? VOTE_ROLES;
+        // 요청한 역할이 «전원» 의 기준이다. 겹친 항목은 하나로 보고, spec 이 없는 역할도 한 줄로 남긴다.
+        const roles = [...new Set(o.roles ?? VOTE_ROLES)];
         const all = (deps.specs ?? workerSpecs)();
-        const specs = roles.map((p) => all.find((s) => s.provider === p)).filter((s) => !!s);
         const ask = deps.ask ?? (defaultAsk);
         const rawErrors = new Map();
-        const answers = await Promise.all(specs.map(async (s) => {
+        const answers = await Promise.all(roles.map(async (role) => {
             const started = Date.now();
+            const s = all.find((x) => x.provider === role);
+            if (!s)
+                return { provider: role, model: '', ok: false, error: '키 없음', ms: 0 };
             if (!s.enabled())
                 return { provider: s.provider, model: s.model, ok: false, error: '키 없음', ms: 0 };
             try {
@@ -60,7 +63,7 @@ export function vote(o, deps = {}) {
             provider: failureProvider(a.provider),
             operation: `${o.operation ?? 'vote'}.vote.${a.model}`,
             error: rawErrors.get(a.provider) ?? new Error(a.error ?? '실패'),
-            meta: { asked: specs.length, answered: answers.filter((x) => x.ok).length, model: a.model },
+            meta: { asked: roles.length, answered: answers.filter((x) => x.ok).length, model: a.model },
         })));
         const ok = answers.filter((a) => a.ok && a.key !== undefined);
         const counts = new Map();
@@ -75,7 +78,7 @@ export function vote(o, deps = {}) {
         const top = sorted[0];
         const second = sorted[1];
         const majority = top && top.count >= 2 && (!second || second.count < top.count) ? top : null;
-        const unanimous = ok.length === specs.length && specs.length > 0 && counts.size === 1 && top ? top.value : null;
+        const unanimous = ok.length === roles.length && roles.length > 0 && counts.size === 1 && top ? top.value : null;
         return { answers, answered: ok.length, unanimous, majority };
     });
 }
