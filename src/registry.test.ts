@@ -10,6 +10,7 @@ import {
   thinksByDefault,
   usesNativeStructuredOutput,
 } from './providers.js'
+import { headOutputBudget } from './head-synth.js'
 
 const saved = { ...process.env }
 beforeEach(() => {
@@ -32,8 +33,13 @@ describe('registry', () => {
     expect(envNameFor('embed.small')).toBe('AIFED_MODEL_EMBED_SMALL')
   })
   it('AIFED_MODEL_* 가 기본값을 덮는다(제공자는 역할이 정한다)', () => {
-    process.env.AIFED_MODEL_HEAD = 'claude-opus-5-5'
-    expect(modelFor('head')).toEqual({ provider: 'anthropic', id: 'claude-opus-5-5' })
+    process.env.AIFED_MODEL_HEAD = 'claude-opus-4-8'
+    expect(modelFor('head')).toEqual({ provider: 'anthropic', id: 'claude-opus-4-8' })
+  })
+  it('관리자(head)는 Opus 5.5 · 생각 몫을 더한 출력 한도를 받는다(2026-09-30 오너 결정)', () => {
+    expect(modelFor('head').id).toBe('claude-opus-5-5')
+    expect(headOutputBudget(1200)).toBe(9200)
+    expect(headOutputBudget(1200, 'claude-opus-4-8')).toBe(1200)
   })
   it('예전 이름(HEAD_MODEL 등)도 읽되 새 이름이 이긴다', () => {
     process.env.HEAD_MODEL = 'old'

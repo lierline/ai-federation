@@ -18,7 +18,7 @@
 //    바꿀 때는 저장 벡터를 다시 만드는 일과 한 묶음으로 해야 한다.
 //
 // 환경변수로 역할 하나를 덮어쓸 수 있다: AIFED_MODEL_<역할>(점은 밑줄, 대문자)
-//   예: AIFED_MODEL_HEAD=claude-opus-5-5 · AIFED_MODEL_WORKER_OPENAI=gpt-6-luna
+//   예: AIFED_MODEL_HEAD=claude-opus-4-8(되돌리기) · AIFED_MODEL_WORKER_OPENAI=gpt-6-luna
 // 예전 이름(CLAUDE_MODEL · OPENAI_MODEL · GEMINI_MODEL · HEAD_MODEL)도 계속 읽는다.
 
 export type Provider = 'anthropic' | 'openai' | 'google'
@@ -47,7 +47,9 @@ export interface ModelSpec {
 export const DEFAULT_MODELS: Record<Role, ModelSpec> = {
   fast: { provider: 'anthropic', id: 'claude-haiku-4-5-20251001' },
   draft: { provider: 'anthropic', id: 'claude-sonnet-4-5-20250929' },
-  head: { provider: 'anthropic', id: 'claude-opus-4-8' },
+  // 2026-09-30 오너 결정: 관리자(head)는 Opus 5.5. 평가(docs/model-eval-2026-09-30.md)에서 맞힘은 4.8 과
+  // 1건 차이, 건당 비용 약 1.7배. 새 Opus 가 나오면 올리고 비용 변화를 재서 보고한다(오너 지시).
+  head: { provider: 'anthropic', id: 'claude-opus-5-5' },
   'worker.claude': { provider: 'anthropic', id: 'claude-haiku-4-5-20251001' },
   'worker.openai': { provider: 'openai', id: 'gpt-4o-mini' },
   'worker.gemini': { provider: 'google', id: 'gemini-2.5-flash' },
