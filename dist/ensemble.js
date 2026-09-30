@@ -3,7 +3,7 @@ import { enabledWorkerSpecs } from './models.js';
 import { buildSynthesisPrompt, headOutputBudget, HEAD_SYNTHESIS_GUIDE, synthesize } from './head-synth.js';
 import { limits } from './config.js';
 import { modelFor } from './registry.js';
-import { hasKey, languageModel, reportFailure, reportUsage } from './providers.js';
+import { hasKey, languageModel, reportFailure, reportUsage, syncModels } from './providers.js';
 const SINGLE_ORDER = [
     { role: 'fast', provider: 'claude' },
     { role: 'worker.openai', provider: 'openai' },
@@ -72,6 +72,7 @@ function specProvider(p) {
 }
 /** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). */
 export async function ensemble(opts, deps = {}) {
+    await syncModels();
     const collect = deps.collect ?? defaultCollect;
     const synth = deps.synth ?? synthesize;
     const single = deps.single ?? defaultSingle;
@@ -118,6 +119,7 @@ export async function ensemble(opts, deps = {}) {
  * ⚠️ Head 가 스트리밍 도중 실패하는 것은 여기서 알 수 없다(onError 로 흐른다).
  */
 export async function ensembleStream(opts, deps = {}) {
+    await syncModels();
     const maxTok = opts.maxTokens ?? 1600;
     const collect = deps.collect ?? defaultCollect;
     const { active, drafts } = await collect({

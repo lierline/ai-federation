@@ -126,8 +126,52 @@ export function languageModelById(provider, id) {
 }
 /** 역할의 모델 객체. AI SDK 의 generateText · generateObject · streamText 에 그대로 넣는다. */
 export function languageModel(role) {
+    if (config.beforeModelCall)
+        return lateBoundModel(role, config.beforeModelCall);
     const m = modelFor(role);
     return languageModelById(m.provider, m.id);
+}
+/** 운영 화면 값을 지금 맞춘다(beforeModelCall). 모델 이름을 미리 적어 두는 3사 병렬 앞에서 부른다. */
+export async function syncModels() {
+    try {
+        await config.beforeModelCall?.();
+    }
+    catch {
+        // 못 읽으면 이전 값으로 계속한다.
+    }
+}
+/**
+ * 역할만 쥐고 있다가 호출 순간에 모델을 고르는 객체. 모델 객체를 만든 뒤 호출까지 사이에
+ * 운영 화면 값이 바뀌어도(또는 서버가 막 떠서 아직 못 읽었어도) 호출 때의 값을 쓴다.
+ */
+function lateBoundModel(role, before) {
+    const current = () => {
+        const m = modelFor(role);
+        return languageModelById(m.provider, m.id);
+    };
+    const ready = async () => {
+        try {
+            await before();
+        }
+        catch {
+            // 설정을 못 읽어도 AI 호출은 이전 값(또는 기본값)으로 계속한다.
+        }
+        return current();
+    };
+    return {
+        specificationVersion: 'v3',
+        get provider() {
+            return current().provider;
+        },
+        get modelId() {
+            return modelFor(role).id;
+        },
+        get supportedUrls() {
+            return current().supportedUrls;
+        },
+        doGenerate: async (options) => (await ready()).doGenerate(options),
+        doStream: async (options) => (await ready()).doStream(options),
+    };
 }
 /** 역할의 임베딩 모델. */
 export function embeddingModel(role) {

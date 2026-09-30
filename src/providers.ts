@@ -43,6 +43,12 @@ export interface FederationConfig {
   reportFailure?: (event: FailureEvent) => Promise<void> | void
   /** 라이브러리 안에서 부른 호출의 토큰 사용량. 비용 집계 · 평가용. */
   onUsage?: (event: UsageEvent) => void
+  /**
+   * 모델을 부르기 «직전» 에 한 번 기다린다. 제품이 운영 화면에서 고른 모델(DB)을 여기서
+   * 최신으로 맞추면(setModelOverrides), 그 호출부터 새 모델이 쓰인다. 넘기면 languageModel(역할)은
+   * 역할만 쥔 채로 돌려주고, 실제 모델은 호출 때 고른다. 이 함수가 던지면 이전 값으로 계속한다.
+   */
+  beforeModelCall?: () => Promise<void>
 }
 
 export interface UsageEvent {
@@ -185,8 +191,53 @@ export function languageModelById(provider: Provider, id: string): LanguageModel
 
 /** 역할의 모델 객체. AI SDK 의 generateText · generateObject · streamText 에 그대로 넣는다. */
 export function languageModel(role: TextRole): LanguageModel {
+  if (config.beforeModelCall) return lateBoundModel(role, config.beforeModelCall)
   const m = modelFor(role)
   return languageModelById(m.provider, m.id)
+}
+
+/** 운영 화면 값을 지금 맞춘다(beforeModelCall). 모델 이름을 미리 적어 두는 3사 병렬 앞에서 부른다. */
+export async function syncModels(): Promise<void> {
+  try {
+    await config.beforeModelCall?.()
+  } catch {
+    // 못 읽으면 이전 값으로 계속한다.
+  }
+}
+
+type ModelObject = ReturnType<typeof wrapLanguageModel>
+
+/**
+ * 역할만 쥐고 있다가 호출 순간에 모델을 고르는 객체. 모델 객체를 만든 뒤 호출까지 사이에
+ * 운영 화면 값이 바뀌어도(또는 서버가 막 떠서 아직 못 읽었어도) 호출 때의 값을 쓴다.
+ */
+function lateBoundModel(role: TextRole, before: () => Promise<void>): ModelObject {
+  const current = (): ModelObject => {
+    const m = modelFor(role)
+    return languageModelById(m.provider, m.id) as ModelObject
+  }
+  const ready = async (): Promise<ModelObject> => {
+    try {
+      await before()
+    } catch {
+      // 설정을 못 읽어도 AI 호출은 이전 값(또는 기본값)으로 계속한다.
+    }
+    return current()
+  }
+  return {
+    specificationVersion: 'v3',
+    get provider() {
+      return current().provider
+    },
+    get modelId() {
+      return modelFor(role).id
+    },
+    get supportedUrls() {
+      return current().supportedUrls
+    },
+    doGenerate: async (options) => (await ready()).doGenerate(options),
+    doStream: async (options) => (await ready()).doStream(options),
+  }
 }
 
 /** 역할의 임베딩 모델. */

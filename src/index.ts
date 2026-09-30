@@ -12,6 +12,12 @@ export {
   modelId,
   currentModels,
   envNameFor,
+  MODEL_CATALOG,
+  catalogFor,
+  catalogEntry,
+  setModelOverrides,
+  modelOverrides,
+  modelSource,
 } from './registry.js'
 export {
   configure,
@@ -30,8 +36,9 @@ export {
   rejectsSampling,
   usesNativeStructuredOutput,
   thinksByDefault,
+  syncModels,
 } from './providers.js'
-export type { Provider, TextRole, EmbedRole, Role, ModelSpec } from './registry.js'
+export type { Provider, TextRole, EmbedRole, Role, ModelSpec, CatalogEntry } from './registry.js'
 export type { FederationConfig, FailureEvent, FetchProvider, UsageEvent } from './providers.js'
 export type {
   ProviderId,

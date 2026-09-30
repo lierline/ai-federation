@@ -18,6 +18,12 @@ export interface FederationConfig {
     reportFailure?: (event: FailureEvent) => Promise<void> | void;
     /** 라이브러리 안에서 부른 호출의 토큰 사용량. 비용 집계 · 평가용. */
     onUsage?: (event: UsageEvent) => void;
+    /**
+     * 모델을 부르기 «직전» 에 한 번 기다린다. 제품이 운영 화면에서 고른 모델(DB)을 여기서
+     * 최신으로 맞추면(setModelOverrides), 그 호출부터 새 모델이 쓰인다. 넘기면 languageModel(역할)은
+     * 역할만 쥔 채로 돌려주고, 실제 모델은 호출 때 고른다. 이 함수가 던지면 이전 값으로 계속한다.
+     */
+    beforeModelCall?: () => Promise<void>;
 }
 export interface UsageEvent {
     model: string;
@@ -51,6 +57,8 @@ export declare function usesNativeStructuredOutput(modelId: string): boolean;
 export declare function languageModelById(provider: Provider, id: string): LanguageModel;
 /** 역할의 모델 객체. AI SDK 의 generateText · generateObject · streamText 에 그대로 넣는다. */
 export declare function languageModel(role: TextRole): LanguageModel;
+/** 운영 화면 값을 지금 맞춘다(beforeModelCall). 모델 이름을 미리 적어 두는 3사 병렬 앞에서 부른다. */
+export declare function syncModels(): Promise<void>;
 /** 역할의 임베딩 모델. */
 export declare function embeddingModel(role: EmbedRole): EmbeddingModel;
 /** 역할이 쓰는 제공자의 키가 있는가. */

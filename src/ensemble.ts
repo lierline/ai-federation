@@ -3,7 +3,7 @@ import { enabledWorkerSpecs } from './models.js'
 import { buildSynthesisPrompt, headOutputBudget, HEAD_SYNTHESIS_GUIDE, synthesize } from './head-synth.js'
 import { limits } from './config.js'
 import { modelFor, type TextRole } from './registry.js'
-import { hasKey, languageModel, reportFailure, reportUsage } from './providers.js'
+import { hasKey, languageModel, reportFailure, reportUsage, syncModels } from './providers.js'
 import type { EnsembleResult, EnsembleTier, ProviderId, WorkerResult } from './types.js'
 
 // =============================================================================
@@ -111,6 +111,7 @@ function specProvider(p: ProviderId) {
 
 /** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). */
 export async function ensemble(opts: EnsembleOpts, deps: EnsembleDeps = {}): Promise<EnsembleResult> {
+  await syncModels()
   const collect = deps.collect ?? defaultCollect
   const synth = deps.synth ?? synthesize
   const single = deps.single ?? defaultSingle
@@ -183,6 +184,7 @@ export async function ensembleStream(
   opts: EnsembleStreamOpts,
   deps: Pick<EnsembleDeps, 'collect'> = {},
 ): Promise<{ result: ReturnType<typeof streamText>; quality: EnsembleQuality }> {
+  await syncModels()
   const maxTok = opts.maxTokens ?? 1600
   const collect = deps.collect ?? defaultCollect
   const { active, drafts } = await collect({
