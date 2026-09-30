@@ -14,8 +14,9 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createGateway, wrapLanguageModel, } from 'ai';
+import { createGateway, wrapEmbeddingModel, wrapLanguageModel, } from 'ai';
 import { modelFor } from './registry.js';
+import { embedUsageMiddleware, setUsageSink, usageMiddleware } from './usage-record.js';
 export function reportUsage(model, stage, usage, finishReason) {
     try {
         config.onUsage?.({ model, stage, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0, finishReason });
@@ -38,6 +39,7 @@ let cache = {};
 export function configure(next) {
     config = next;
     cache = {};
+    setUsageSink(next.recordUsage);
 }
 const DEFAULT_KEYS = {
     anthropic: () => process.env.ANTHROPIC_API_KEY,
@@ -115,21 +117,21 @@ function claudeGuard(modelId) {
         },
     };
 }
-/** 모델 id 로 바로 만든다. 제품 코드는 languageModel(역할) 을 쓸 것. 평가 · 시험용. */
-export function languageModelById(provider, id) {
+/** 모델 id 로 바로 만든다. 제품 코드는 languageModel(역할) 을 쓸 것. 평가 · 시험용. role 은 기록에만 쓴다. */
+export function languageModelById(provider, id, role) {
+    const record = usageMiddleware({ provider, model: id, role: role ?? null });
     if (provider === 'anthropic') {
-        return wrapLanguageModel({ model: anthropicProvider()(id), middleware: claudeGuard(id) });
+        return wrapLanguageModel({ model: anthropicProvider()(id), middleware: [claudeGuard(id), record] });
     }
-    if (provider === 'openai')
-        return openaiProvider()(id);
-    return googleProvider()(id);
+    const base = provider === 'openai' ? openaiProvider()(id) : googleProvider()(id);
+    return wrapLanguageModel({ model: base, middleware: record });
 }
 /** 역할의 모델 객체. AI SDK 의 generateText · generateObject · streamText 에 그대로 넣는다. */
 export function languageModel(role) {
     if (config.beforeModelCall)
         return lateBoundModel(role, config.beforeModelCall);
     const m = modelFor(role);
-    return languageModelById(m.provider, m.id);
+    return languageModelById(m.provider, m.id, role);
 }
 /** 운영 화면 값을 지금 맞춘다(beforeModelCall). 모델 이름을 미리 적어 두는 3사 병렬 앞에서 부른다. */
 export async function syncModels() {
@@ -147,7 +149,7 @@ export async function syncModels() {
 function lateBoundModel(role, before) {
     const current = () => {
         const m = modelFor(role);
-        return languageModelById(m.provider, m.id);
+        return languageModelById(m.provider, m.id, role);
     };
     const ready = async () => {
         try {
@@ -176,10 +178,11 @@ function lateBoundModel(role, before) {
 /** 역할의 임베딩 모델. */
 export function embeddingModel(role) {
     const m = modelFor(role);
+    const record = embedUsageMiddleware({ provider: m.provider, model: m.id, role });
     if (m.provider === 'openai')
-        return openaiProvider().embedding(m.id);
+        return wrapEmbeddingModel({ model: openaiProvider().embedding(m.id), middleware: record });
     if (m.provider === 'google')
-        return googleProvider().textEmbeddingModel(m.id);
+        return wrapEmbeddingModel({ model: googleProvider().textEmbeddingModel(m.id), middleware: record });
     throw new Error(`임베딩을 지원하지 않는 제공자: ${m.provider}`);
 }
 /** 역할이 쓰는 제공자의 키가 있는가. */
@@ -201,9 +204,9 @@ export function gatewayIds(roles) {
 export function isGatewayConfigured() {
     return hasKey('gateway');
 }
-/** 게이트웨이를 거치는 모델 객체. 1차 제공자가 죽었을 때의 폴백 경로. */
+/** 게이트웨이를 거치는 모델 객체. 1차 제공자가 죽었을 때의 폴백 경로. 기록의 모델은 «요청한» id 다(사슬의 다음 모델로 넘어가도). */
 export function gatewayModel(id) {
-    return gatewayProvider()(id);
+    return wrapLanguageModel({ model: gatewayProvider()(id), middleware: usageMiddleware({ provider: 'gateway', model: id, role: null }) });
 }
 /** 게이트웨이 사슬 옵션. 프롬프트 학습 금지를 항상 켠다. */
 export function gatewayOptions(fallbackIds) {

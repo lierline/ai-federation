@@ -1,5 +1,6 @@
 import { type EmbeddingModel, type LanguageModel } from 'ai';
 import { type EmbedRole, type Provider, type TextRole } from './registry.js';
+import { type RecordUsage } from './usage-record.js';
 export type FetchProvider = Provider | 'gateway';
 type FetchFn = typeof globalThis.fetch;
 export interface FederationConfig {
@@ -24,6 +25,11 @@ export interface FederationConfig {
      * 역할만 쥔 채로 돌려주고, 실제 모델은 호출 때 고른다. 이 함수가 던지면 이전 값으로 계속한다.
      */
     beforeModelCall?: () => Promise<void>;
+    /**
+     * 모델 호출 한 번마다 사용 기록 한 건(토큰 · 추정 비용 · 종료 사유 · 걸린 시간)을 넘긴다.
+     * 라이브러리가 기다리되 2초까지만 기다리고, 던져도 AI 결과는 그대로 돌려준다.
+     */
+    recordUsage?: RecordUsage;
 }
 export interface UsageEvent {
     model: string;
@@ -55,8 +61,8 @@ export declare function rejectsSampling(modelId: string): boolean;
 export declare function thinksByDefault(modelId: string): boolean;
 /** 구조화 출력을 모델 고유 기능(output_config.format)으로 보내야 하는 Claude 모델. */
 export declare function usesNativeStructuredOutput(modelId: string): boolean;
-/** 모델 id 로 바로 만든다. 제품 코드는 languageModel(역할) 을 쓸 것. 평가 · 시험용. */
-export declare function languageModelById(provider: Provider, id: string): LanguageModel;
+/** 모델 id 로 바로 만든다. 제품 코드는 languageModel(역할) 을 쓸 것. 평가 · 시험용. role 은 기록에만 쓴다. */
+export declare function languageModelById(provider: Provider, id: string, role?: string): LanguageModel;
 /** 역할의 모델 객체. AI SDK 의 generateText · generateObject · streamText 에 그대로 넣는다. */
 export declare function languageModel(role: TextRole): LanguageModel;
 /** 운영 화면 값을 지금 맞춘다(beforeModelCall). 모델 이름을 미리 적어 두는 3사 병렬 앞에서 부른다. */
@@ -70,7 +76,7 @@ export declare function gatewayId(provider: Provider, id: string): string;
 /** 역할들을 게이트웨이 id 목록으로. 폴백 사슬을 만들 때 쓴다. */
 export declare function gatewayIds(roles: TextRole[]): string[];
 export declare function isGatewayConfigured(): boolean;
-/** 게이트웨이를 거치는 모델 객체. 1차 제공자가 죽었을 때의 폴백 경로. */
+/** 게이트웨이를 거치는 모델 객체. 1차 제공자가 죽었을 때의 폴백 경로. 기록의 모델은 «요청한» id 다(사슬의 다음 모델로 넘어가도). */
 export declare function gatewayModel(id: string): LanguageModel;
 /** 게이트웨이 사슬 옵션. 프롬프트 학습 금지를 항상 켠다. */
 export declare function gatewayOptions(fallbackIds: string[]): {

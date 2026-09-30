@@ -34,7 +34,7 @@ export declare function pickSingle(): {
 export declare function draftBudget(bodyTokens: number): number;
 /** 초안에 붙이는 분량 안내. 글자 수를 토큰 한도와 같은 수로 잡는다(맞는지는 운영 한도 점검의 잘림 수로 본다). */
 export declare function draftLengthHint(bodyTokens: number): string;
-/** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). */
+/** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). 안에서 부른 모델 호출에 작업 이름을 붙여 기록한다. */
 export declare function ensemble(opts: EnsembleOpts, deps?: EnsembleDeps): Promise<EnsembleResult>;
 export interface EnsembleStreamOpts {
     system: string;
