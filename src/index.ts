@@ -53,3 +53,5 @@ export type {
   EnsembleTier,
 } from './types.js'
 export type { EnsembleOpts, EnsembleStreamOpts, EnsembleQuality } from './ensemble.js'
+export { createIngestSender, createRemoteSettingsSync } from './remote.js'
+export type { RemoteOptions, RemoteProduct, EvalRun } from './remote.js'
