@@ -30,11 +30,13 @@ export interface UsageEvent {
     stage: 'worker' | 'head' | 'single';
     inputTokens: number;
     outputTokens: number;
+    /** 모델이 멈춘 까닭. 'length' 면 출력 한도에서 잘린 것이다(평가 · 운영 한도 점검용). */
+    finishReason?: string;
 }
 export declare function reportUsage(model: string, stage: UsageEvent['stage'], usage: {
     inputTokens?: number;
     outputTokens?: number;
-} | undefined): void;
+} | undefined, finishReason?: string): void;
 export interface FailureEvent {
     provider: Provider;
     operation: string;

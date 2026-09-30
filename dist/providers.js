@@ -16,9 +16,9 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGateway, wrapLanguageModel, } from 'ai';
 import { modelFor } from './registry.js';
-export function reportUsage(model, stage, usage) {
+export function reportUsage(model, stage, usage, finishReason) {
     try {
-        config.onUsage?.({ model, stage, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0 });
+        config.onUsage?.({ model, stage, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0, finishReason });
     }
     catch {
         // 집계 실패가 본 작업을 깨면 안 된다.

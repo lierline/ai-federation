@@ -56,11 +56,18 @@ export interface UsageEvent {
   stage: 'worker' | 'head' | 'single'
   inputTokens: number
   outputTokens: number
+  /** 모델이 멈춘 까닭. 'length' 면 출력 한도에서 잘린 것이다(평가 · 운영 한도 점검용). */
+  finishReason?: string
 }
 
-export function reportUsage(model: string, stage: UsageEvent['stage'], usage: { inputTokens?: number; outputTokens?: number } | undefined): void {
+export function reportUsage(
+  model: string,
+  stage: UsageEvent['stage'],
+  usage: { inputTokens?: number; outputTokens?: number } | undefined,
+  finishReason?: string,
+): void {
   try {
-    config.onUsage?.({ model, stage, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0 })
+    config.onUsage?.({ model, stage, inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0, finishReason })
   } catch {
     // 집계 실패가 본 작업을 깨면 안 된다.
   }

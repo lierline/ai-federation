@@ -51,14 +51,14 @@ export function pickSingle(): { role: TextRole; provider: ProviderId } | null {
 async function defaultSingle(o: EnsembleOpts): Promise<{ text: string; provider: ProviderId }> {
   const pick = pickSingle()
   if (!pick) throw new Error('실행할 수 있는 제공자가 없습니다(키 없음)')
-  const { text, usage } = await generateText({
+  const { text, usage, finishReason } = await generateText({
     model: languageModel(pick.role),
     system: o.system,
     prompt: o.prompt,
     maxOutputTokens: o.maxTokens ?? limits.maxTokens(),
     maxRetries: 0,
   })
-  reportUsage(modelFor(pick.role).id, 'single', usage)
+  reportUsage(modelFor(pick.role).id, 'single', usage, finishReason)
   return { text: text.trim(), provider: pick.provider }
 }
 
@@ -71,7 +71,7 @@ async function defaultCollect(o: EnsembleOpts): Promise<{ active: ProviderId[]; 
     specs.map(async (s): Promise<WorkerResult> => {
       const started = Date.now()
       try {
-        const { text, usage } = await generateText({
+        const { text, usage, finishReason } = await generateText({
           model: s.build(),
           system: o.system,
           prompt: o.prompt,
@@ -79,7 +79,7 @@ async function defaultCollect(o: EnsembleOpts): Promise<{ active: ProviderId[]; 
           maxRetries: 0,
           abortSignal: AbortSignal.timeout(timeoutMs),
         })
-        reportUsage(s.model, 'worker', usage)
+        reportUsage(s.model, 'worker', usage, finishReason)
         const t = text.trim()
         return { provider: s.provider, model: s.model, ok: !!t, text: t, error: t ? undefined : '빈 응답', ms: Date.now() - started }
       } catch (e) {

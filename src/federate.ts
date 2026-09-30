@@ -18,13 +18,13 @@ async function defaultCollect(question: string): Promise<WorkerResult[]> {
       provider: s.provider,
       model: s.model,
       run: async (signal: AbortSignal) => {
-        const { text, usage } = await generateText({
+        const { text, usage, finishReason } = await generateText({
           model: s.build(),
           prompt: question,
           maxOutputTokens: limits.maxTokens(),
           abortSignal: signal,
         })
-        reportUsage(s.model, 'worker', usage)
+        reportUsage(s.model, 'worker', usage, finishReason)
         return text
       },
     })),

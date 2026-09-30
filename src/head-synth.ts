@@ -35,7 +35,7 @@ export async function synthesize(
   maxTokens: number,
   timeoutMs: number = limits.headTimeoutMs(),
 ): Promise<string> {
-  const { text, usage } = await generateText({
+  const { text, usage, finishReason } = await generateText({
     model: headModel(),
     system: system + HEAD_SYNTHESIS_GUIDE,
     prompt: buildSynthesisPrompt(prompt, drafts),
@@ -43,6 +43,6 @@ export async function synthesize(
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(timeoutMs),
   })
-  reportUsage(modelId('head'), 'head', usage)
+  reportUsage(modelId('head'), 'head', usage, finishReason)
   return text.trim()
 }

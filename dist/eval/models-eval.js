@@ -15,7 +15,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import { generateText } from 'ai';
 import { loadLocalEnv } from '../config.js';
-import { configure, languageModelById } from '../providers.js';
+import { configure, languageModelById, thinksByDefault } from '../providers.js';
 import { federate } from '../federate.js';
 import { ensemble } from '../ensemble.js';
 import { WRITING_TASKS } from './writing-tasks.js';
@@ -56,11 +56,13 @@ const fed = (key, label, claude, openai, gemini, head) => ({
     },
 });
 const single = (key, label, provider, id) => ({ kind: 'single', key, label, provider, id });
-const A = fed('A', '현행 3사 + Opus 4.8', 'claude-haiku-4-5-20251001', 'gpt-4o-mini', 'gemini-2.5-flash', 'claude-opus-4-8');
+const A48 = fed('A48', '현행 3사 + Opus 4.8 (이전 관리자)', 'claude-haiku-4-5-20251001', 'gpt-4o-mini', 'gemini-2.5-flash', 'claude-opus-4-8');
+// 2026-09-30 오후부터 운영 관리자는 Opus 5.5. 작성 비교의 기준(A)은 운영 구성이다.
+const A = fed('A', '현행 3사 + Opus 5.5 (운영)', 'claude-haiku-4-5-20251001', 'gpt-4o-mini', 'gemini-2.5-flash', 'claude-opus-5-5');
 const B = fed('B', '같은 급 최신 3사 + Opus 5.5', 'claude-haiku-4-5-20251001', 'gpt-6-luna', 'gemini-3.8-flash', 'claude-opus-5-5');
 const C = fed('C', '한 급 위 3사 + Opus 5.5', 'claude-sonnet-5-5', 'gpt-6.1-sol', 'gemini-3.8-flash', 'claude-opus-5-5');
 const JUDGE_CONFIGS = [
-    A,
+    A48,
     B,
     C,
     single('S-haiku45', '단일 Haiku 4.5 (현 fast)', 'anthropic', 'claude-haiku-4-5-20251001'),
@@ -71,6 +73,7 @@ const JUDGE_CONFIGS = [
 ];
 const WRITE_CONFIGS = [
     A,
+    A48,
     B,
     C,
     single('S-opus55', '단일 Opus 5.5', 'anthropic', 'claude-opus-5-5'),
@@ -88,7 +91,7 @@ configure({ onUsage: record });
 async function metered(fn) {
     const mine = [];
     const value = await usageStore.run(mine, fn);
-    return { value, cost: mine.reduce((s, u) => s + cost(u), 0) };
+    return { value, cost: mine.reduce((s, u) => s + cost(u), 0), events: mine };
 }
 function withEnv(env, fn) {
     const saved = {};
@@ -117,7 +120,7 @@ async function pool(items, n, fn) {
     return out;
 }
 async function singleCall(c, system, prompt, maxTokens) {
-    const { text, usage } = await generateText({
+    const { text, usage, finishReason } = await generateText({
         model: languageModelById(c.provider, c.id),
         system,
         prompt,
@@ -125,7 +128,7 @@ async function singleCall(c, system, prompt, maxTokens) {
         maxRetries: 2,
         abortSignal: AbortSignal.timeout(240_000),
     });
-    record({ model: c.id, stage: 'single', inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 });
+    record({ model: c.id, stage: 'single', inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0, finishReason });
     return text.trim();
 }
 const RANK = { LOW: 0, MEDIUM: 1, HIGH: 2 };
@@ -203,15 +206,27 @@ function summarizeJudge(rows) {
     };
 }
 // ── 작성 평가 ───────────────────────────────────────────────────────────────
-async function produce(c, t) {
+// 🔑 2026-09-30 재측정: 첫 측정은 현행 초안만 1,600토큰에서 잘려 무효였다. 이번에는 모든 구성의
+//    «보이는 본문» 한도를 BODY 하나로 맞춘다. 생각하는 모델은 생각 몫(8,000)을 더 받는다
+//    (headOutputBudget 과 같은 규칙). 잘렸는지는 모델이 돌려준 종료 사유('length')로 센다.
+const BODY = Number(process.env.AIFED_EVAL_BODY) || 4000;
+async function produce(c, t, body = BODY) {
     const started = Date.now();
-    const { value, cost: spent } = await metered(async () => {
-        if (c.kind === 'single')
-            return { text: await singleCall(c, t.system, t.prompt, 1600 + 8000), degraded: false };
-        const r = await ensemble({ system: t.system, prompt: t.prompt, tier: 'head', maxTokens: 1600, headTimeoutMs: 240_000, fastTimeoutMs: 90_000 });
+    const { value, cost: spent, events } = await metered(async () => {
+        if (c.kind === 'single') {
+            const cap = thinksByDefault(c.id) ? body + 8000 : body;
+            return { text: await singleCall(c, t.system, t.prompt, cap), degraded: false };
+        }
+        const r = await ensemble({ system: t.system, prompt: t.prompt, tier: 'head', maxTokens: body, headTimeoutMs: 240_000, fastTimeoutMs: 90_000 });
         return { text: r.text, degraded: r.degraded };
     });
-    return { ...value, ms: Date.now() - started, cost: spent };
+    return {
+        ...value,
+        ms: Date.now() - started,
+        cost: spent,
+        cut: events.some((e) => (e.stage === 'head' || e.stage === 'single') && e.finishReason === 'length'),
+        workerCuts: events.filter((e) => e.stage === 'worker' && e.finishReason === 'length').length,
+    };
 }
 const AXES = ['완결성', '정확성', '규제정합', '명확성'];
 const JUDGE_SYS = '당신은 엄정한 의료기기 규제문서 품질 심사관이다. 두 초안 A/B 를 규제문서 관점에서 비교 채점한다. 길이가 아니라 내용의 정확성과 쓸모를 본다. 편견 없이 내용만 본다.';
@@ -283,25 +298,46 @@ async function main() {
     }
     if (mode === 'write' || mode === 'all') {
         const drafts = {};
+        const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+        const failed = (e) => ({ text: '', ms: 0, cost: 0, degraded: true, cut: false, workerCuts: 0, error: String(e) });
         for (const c of WRITE_CONFIGS) {
-            const gen = () => pool(WRITING_TASKS, 6, (t) => produce(c, t).catch((e) => ({ text: '', ms: 0, cost: 0, degraded: true, error: String(e) })));
+            const gen = () => pool(WRITING_TASKS, 6, (t) => produce(c, t).catch(failed));
             drafts[c.key] = await (c.kind === 'federation' ? withEnv(c.env, gen) : gen());
             const d = drafts[c.key];
-            console.log(`[작성] ${c.key} 생성 끝 · 빈 답 ${d.filter((x) => !x.text).length} · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)} · 중앙 ${(d.map((x) => x.ms).sort((a, b) => a - b)[Math.floor(d.length / 2)] / 1000).toFixed(1)}초`);
+            console.log(`[작성] ${c.key} ${c.label} · 빈 답 ${d.filter((x) => !x.text).length} · 최종본 잘림 ${d.filter((x) => x.cut).length} · 초안 잘림 ${d.reduce((s, x) => s + x.workerCuts, 0)} · 길이 중앙 ${median(d.map((x) => x.text.length))}자 · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)} · 중앙 ${(median(d.map((x) => x.ms)) / 1000).toFixed(1)}초`);
         }
         const comparisons = {};
         for (const c of WRITE_CONFIGS.filter((x) => x.key !== 'A')) {
-            comparisons[c.key] = await pool(WRITING_TASKS, 4, async (t, i) => ({
-                task: t.name,
-                verdicts: drafts.A[i].text && drafts[c.key][i].text ? await compare(t, drafts.A[i].text, drafts[c.key][i].text) : [],
-            }));
-            const vs = comparisons[c.key].flatMap((x) => x.verdicts).filter((v) => v.winner !== 'error');
+            comparisons[c.key] = await pool(WRITING_TASKS, 4, async (t, i) => {
+                const [a, b] = [drafts.A[i], drafts[c.key][i]];
+                // 잘린 답이 끼면 비교하지 않는다(지난번 무효의 원인). 따로 센다.
+                if (!a.text || !b.text)
+                    return { task: t.name, skipped: '빈 답', verdicts: [] };
+                if (a.cut || b.cut)
+                    return { task: t.name, skipped: '잘림', verdicts: [] };
+                return { task: t.name, verdicts: await compare(t, a.text, b.text) };
+            });
+            const rows = comparisons[c.key];
+            const vs = rows.flatMap((x) => x.verdicts).filter((v) => v.winner !== 'error');
             const wins = vs.filter((v) => v.winner === 'cand').length;
             const losses = vs.filter((v) => v.winner === 'base').length;
             const delta = vs.reduce((s, v) => s + (v.candScore - v.baseScore), 0) / Math.max(1, vs.length) / 4;
-            console.log(`[작성] ${c.key} 대 A · 후보 승 ${wins} · 현행 승 ${losses} · 비김 ${vs.length - wins - losses} · 축 평균 차 ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}/10 · 심사 실패 ${comparisons[c.key].flatMap((x) => x.verdicts).length - vs.length}`);
+            const skipped = rows.filter((x) => x.skipped).length;
+            console.log(`[작성] ${c.key} 대 A · 비교 ${rows.length - skipped}과제(뺀 과제 ${skipped}) · 후보 승 ${wins} · 기준 승 ${losses} · 비김 ${vs.length - wins - losses} · 축 평균 차 ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}/10 · 심사 실패 ${rows.flatMap((x) => x.verdicts).length - vs.length}`);
         }
-        writeFileSync(path.join(outDir, `write-${stamp}.json`), JSON.stringify({ drafts, comparisons }, null, 1));
+        writeFileSync(path.join(outDir, `write-${stamp}.json`), JSON.stringify({ body: BODY, drafts, comparisons }, null, 1));
+    }
+    // 운영 한도 점검: Q-Atelier 작성 도우미는 본문 한도 500 · 600 · 700토큰으로 부른다.
+    // 지금 운영 구성(A)이 그 한도에서 잘리는지 센다(품질 비교는 하지 않는다).
+    if (mode === 'prodcap' || mode === 'all') {
+        const failed = (e) => ({ text: '', ms: 0, cost: 0, degraded: true, cut: false, workerCuts: 0, error: String(e) });
+        const out = {};
+        for (const cap of [500, 600, 700]) {
+            out[cap] = await withEnv(A.env, () => pool(WRITING_TASKS, 6, (t) => produce(A, t, cap).catch(failed)));
+            const d = out[cap];
+            console.log(`[운영 한도 ${cap}] 최종본 잘림 ${d.filter((x) => x.cut).length}/${d.length} · 초안 잘림 ${d.reduce((s, x) => s + x.workerCuts, 0)}/${d.length * 3} · 빈 답 ${d.filter((x) => !x.text).length} · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)}`);
+        }
+        writeFileSync(path.join(outDir, `prodcap-${stamp}.json`), JSON.stringify(out, null, 1));
     }
     return 0;
 }

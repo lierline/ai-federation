@@ -24,7 +24,7 @@ export function buildSynthesisPrompt(userPrompt, drafts) {
 }
 /** 생성 Head · 여러 초안을 작업 규칙을 지키며 하나로 종합한다. */
 export async function synthesize(system, prompt, drafts, maxTokens, timeoutMs = limits.headTimeoutMs()) {
-    const { text, usage } = await generateText({
+    const { text, usage, finishReason } = await generateText({
         model: headModel(),
         system: system + HEAD_SYNTHESIS_GUIDE,
         prompt: buildSynthesisPrompt(prompt, drafts),
@@ -32,7 +32,7 @@ export async function synthesize(system, prompt, drafts, maxTokens, timeoutMs = 
         maxRetries: 0,
         abortSignal: AbortSignal.timeout(timeoutMs),
     });
-    reportUsage(modelId('head'), 'head', usage);
+    reportUsage(modelId('head'), 'head', usage, finishReason);
     return text.trim();
 }
 //# sourceMappingURL=head-synth.js.map
