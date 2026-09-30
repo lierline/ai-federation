@@ -505,9 +505,9 @@ async function main(): Promise<number> {
       .postEvalRun({
         kind: 'eval',
         title: process.env.AIFED_EVAL_TITLE,
-        conclusion: process.env.AIFED_EVAL_CONCLUSION ?? '결론은 문서 참고',
+        conclusion: process.env.AIFED_EVAL_CONCLUSION || '결론은 문서 참고',
         costUsd: Number(totalCost.toFixed(4)),
-        docUrl: process.env.AIFED_EVAL_DOC ?? null,
+        docUrl: process.env.AIFED_EVAL_DOC || null,
       })
       .catch((e) => console.warn('평가 한 줄을 AI 총괄에 남기지 못했습니다:', e instanceof Error ? e.message : e))
   }
