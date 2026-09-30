@@ -23,30 +23,14 @@ import { federate } from '../federate.js'
 import { ensemble } from '../ensemble.js'
 import type { Provider } from '../registry.js'
 import { WRITING_TASKS } from './writing-tasks.js'
+import { estimateCostUsd } from '../cost.js'
 
 loadLocalEnv()
 
-// ── 단가(USD / 1M 토큰, 2026-09-30 각 사 공식 가격표) ───────────────────────
-// gemini-3.8-flash 는 12-31 까지 할인가(0.75/3.75)이고 2027-01-01 부터 두 배다. 오래 쓸 값을 보려고 정가로 잰다.
-const PRICE: Record<string, [number, number]> = {
-  'claude-haiku-4-5-20251001': [1, 5],
-  'claude-haiku-4-5': [1, 5],
-  'claude-sonnet-4-5-20250929': [3, 15],
-  'claude-sonnet-5-5': [2, 10],
-  'claude-opus-4-8': [5, 25],
-  'claude-opus-5-5': [4, 20],
-  'gpt-4o-mini': [0.15, 0.6],
-  'gpt-6-luna': [0.1, 0.5],
-  'gpt-6.1-sol': [2, 10],
-  'gpt-6-astra': [10, 50],
-  'gemini-2.5-flash': [0.3, 2.5],
-  'gemini-3.8-flash': [1.5, 7.5],
-  'gemini-3.1-pro-preview': [2, 12],
-}
 function cost(u: UsageEvent): number {
-  const p = PRICE[u.model]
-  if (!p) throw new Error(`단가 없음: ${u.model}`)
-  return (u.inputTokens * p[0] + u.outputTokens * p[1]) / 1e6
+  const c = estimateCostUsd(u.model, u.inputTokens, u.outputTokens)
+  if (c === null) throw new Error(`단가 없음: ${u.model} (src/cost.ts 에 더할 것)`)
+  return c
 }
 
 // ── 구성 ────────────────────────────────────────────────────────────────────
@@ -475,7 +459,7 @@ async function main(): Promise<number> {
     const spec = process.env.AIFED_EVAL_RESCORE_JUDGE
     if (!draftsPath || !spec) throw new Error('AIFED_EVAL_DRAFTS(write-*.json)와 AIFED_EVAL_RESCORE_JUDGE(회사:모델)를 주십시오')
     const [provider, id] = spec.split(':') as [Provider, string]
-    if (!PRICE[id]) throw new Error(`${id} 의 단가가 PRICE 표에 없습니다`)
+    if (estimateCostUsd(id, 0, 0) === null) throw new Error(`${id} 의 단가가 없습니다(src/cost.ts)`)
     const judge = { provider, id }
     const sameMaker = provider === 'openai' ? /^gpt/ : provider === 'google' ? /^gemini/ : /^claude/
     // 잔액이 없으면 수백 건이 모두 «심사 실패» 로 쌓인다. 한 번 불러 보고 시작한다.
