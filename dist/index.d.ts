@@ -15,4 +15,6 @@ export type { ProviderId, WorkerResult, HeadReview, ReliabilityJudgment, Federat
 export type { EnsembleOpts, EnsembleStreamOpts, EnsembleQuality } from './ensemble.js';
 export { createIngestSender, createRemoteSettingsSync } from './remote.js';
 export type { RemoteOptions, RemoteProduct, EvalRun } from './remote.js';
+export { vote, VOTE_ROLES } from './vote.js';
+export type { VoteOpts, VoteAnswer, VoteResult, VoteDeps } from './vote.js';
 //# sourceMappingURL=index.d.ts.map

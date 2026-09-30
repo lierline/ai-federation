@@ -49,6 +49,27 @@ const e = await ensemble({ system: '너는 의학 작가다', prompt: '면역항
 console.log(e.text)
 ```
 
+### 합의 모드 (`vote`)
+
+세 작업자에게 같은 구조화 질문을 던지고, **셋 다 답했고 셋이 같을 때만** `unanimous` 에 값이 들어옵니다.
+둘 중 둘은 만장일치가 아닙니다(키 없는 회사 · 죽은 회사는 «답하지 않음» 으로 셉니다). 답을 섞지 않으므로
+분류 · 정규화처럼 «맞다 · 아니다» 가 갈리는 일에 씁니다. 판단은 부르는 쪽 몫입니다.
+
+```ts
+import { vote } from '@lierline/ai-federation'
+import { z } from 'zod'
+
+const r = await vote({
+  schema: z.object({ label: z.string() }),
+  system: '주어진 낱말을 목록의 코드 하나로 고르십시오.',
+  prompt: '낱말: 사과\n목록: FRUIT, VEGETABLE',
+  key: (v) => v.label,
+  operation: 'demo.vote',
+})
+if (r.unanimous) console.log('셋이 같음:', r.unanimous.label)
+else console.log('갈림 · 사람이 본다', r.answers.map((a) => a.key ?? a.error))
+```
+
 ## CLI (패키지 자체 테스트용)
 
 ```bash
