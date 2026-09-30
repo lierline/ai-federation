@@ -33,6 +33,8 @@ async function defaultSingle(o) {
 async function defaultCollect(o) {
     const specs = enabledWorkerSpecs();
     const timeoutMs = o.fastTimeoutMs ?? limits.workerTimeoutMs();
+    // 실패 원본을 그대로 넘긴다. 받는 쪽 분류기가 상태 코드(402 잔액 · 429 한도)를 봐야 한다.
+    const rawErrors = new Map();
     const results = await Promise.all(specs.map(async (s) => {
         const started = Date.now();
         try {
@@ -49,6 +51,7 @@ async function defaultCollect(o) {
             return { provider: s.provider, model: s.model, ok: !!t, text: t, error: t ? undefined : '빈 응답', ms: Date.now() - started };
         }
         catch (e) {
+            rawErrors.set(s.provider, e);
             return { provider: s.provider, model: s.model, ok: false, text: '', error: e instanceof Error ? e.message : String(e), ms: Date.now() - started };
         }
     }));
@@ -58,8 +61,8 @@ async function defaultCollect(o) {
         .filter((r) => !r.ok)
         .map((r) => reportFailure({
         provider: specProvider(r.provider),
-        operation: `${o.operation ?? 'ensemble'}.fast.${r.provider}`,
-        error: new Error(r.error ?? '실패'),
+        operation: `${o.operation ?? 'ensemble'}.fast.${r.model}`,
+        error: rawErrors.get(r.provider) ?? new Error(r.error ?? '실패'),
         meta: { active: specs.length, survived: drafts.length, model: r.model },
     })));
     return { active: specs.map((s) => s.provider), drafts };
