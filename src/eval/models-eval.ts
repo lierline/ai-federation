@@ -24,6 +24,7 @@ import { ensemble } from '../ensemble.js'
 import type { Provider } from '../registry.js'
 import { WRITING_TASKS } from './writing-tasks.js'
 import { estimateCostUsd } from '../cost.js'
+import { createIngestSender } from '../remote.js'
 
 loadLocalEnv()
 
@@ -97,8 +98,18 @@ const JUDGES: { provider: Provider; id: string }[] = [
 // ── 공용 ────────────────────────────────────────────────────────────────────
 // 사례마다 비용을 따로 모은다. 동시에 여러 사례를 돌려도 섞이지 않게 비동기 문맥에 담는다.
 const usageStore = new AsyncLocalStorage<UsageEvent[]>()
-const record = (u: UsageEvent) => void usageStore.getStore()?.push(u)
-configure({ onUsage: record })
+// 이번 실행에 쓴 돈의 합계(사례 밖 호출 포함). 끝에 AI 총괄로 보내는 한 줄에 쓴다. 단가를 모르면 0 으로 센다.
+let totalCost = 0
+const record = (u: UsageEvent) => {
+  totalCost += estimateCostUsd(u.model, u.inputTokens, u.outputTokens) ?? 0
+  usageStore.getStore()?.push(u)
+}
+// AI 총괄로 평가 호출 기록을 보낸다. 주소 · 비밀값은 로컬 .env 에만 둔다(공개 저장소). 없으면 지금처럼만 돈다.
+const ingest =
+  process.env.AIFED_INGEST_URL && process.env.AIFED_INGEST_SECRET
+    ? createIngestSender({ url: process.env.AIFED_INGEST_URL, secret: process.env.AIFED_INGEST_SECRET, product: 'eval' })
+    : null
+configure({ onUsage: record, recordUsage: ingest?.recordUsage })
 async function metered<T>(fn: () => Promise<T>): Promise<{ value: T; cost: number; events: UsageEvent[] }> {
   const mine: UsageEvent[] = []
   const value = await usageStore.run(mine, fn)
@@ -486,6 +497,19 @@ async function main(): Promise<number> {
     })
     console.log(`[다시 채점] ${id} · 쓴 돈 $${spent.toFixed(2)}`)
     writeFileSync(path.join(outDir, `rescore-${stamp}.json`), JSON.stringify({ ...saved, comparisons: rescored, rescoredWith: id }, null, 1))
+  }
+
+  // 끝난 실행 한 줄을 AI 총괄에 남긴다(제목을 준 경우만). 못 남겨도 평가 결과에는 영향이 없다.
+  if (ingest && process.env.AIFED_EVAL_TITLE) {
+    await ingest
+      .postEvalRun({
+        kind: 'eval',
+        title: process.env.AIFED_EVAL_TITLE,
+        conclusion: process.env.AIFED_EVAL_CONCLUSION ?? '결론은 문서 참고',
+        costUsd: Number(totalCost.toFixed(4)),
+        docUrl: process.env.AIFED_EVAL_DOC ?? null,
+      })
+      .catch((e) => console.warn('평가 한 줄을 AI 총괄에 남기지 못했습니다:', e instanceof Error ? e.message : e))
   }
 
   return 0
