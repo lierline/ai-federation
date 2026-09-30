@@ -12,6 +12,10 @@ export const limits = {
   maxTokens: () => Number(process.env.MAX_TOKENS) || 1200,
   workerTimeoutMs: () => Number(process.env.WORKER_TIMEOUT_MS) || 30_000,
   headTimeoutMs: () => Number(process.env.HEAD_TIMEOUT_MS) || 60_000,
+  /** 관리자 종합 앞 3사 초안 한도 = 최종본 한도 × 이 값(기본 1: 예전과 같음) */
+  draftHeadroom: () => Number(process.env.AIFED_DRAFT_HEADROOM) || 1,
+  /** 3사 초안에 분량 안내를 붙일지('1' 이면 켬 · 기본 끔) */
+  draftHint: () => process.env.AIFED_DRAFT_HINT === '1',
 }
 
 /** Gemini 키 · GOOGLE_API_KEY 우선, 없으면 GEMINI_API_KEY 폴백(플랫폼별 명칭 차이 흡수). */

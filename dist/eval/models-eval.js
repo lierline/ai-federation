@@ -2,7 +2,9 @@
 // 모델 후보 평가 · 판정(정답 있는 위험도 분류)과 작성(블라인드 짝 비교)
 // =============================================================================
 // 사용:
-//   AIFED_EVAL_CASES=<정답 사례 JSON 경로> AIFED_EVAL_OUT=<결과 폴더> npx tsx src/eval/models-eval.ts [judge|write|all]
+//   AIFED_EVAL_CASES=<정답 사례 JSON 경로> AIFED_EVAL_OUT=<결과 폴더> npx tsx src/eval/models-eval.ts [judge|write|prodcap|all]
+//   초안 한도 비교: AIFED_EVAL_BASE=<prodcap-*.json> AIFED_DRAFT_HEADROOM=.. AIFED_DRAFT_HINT=0|1 ... models-eval.ts draftcap
+//   다시 채점: AIFED_EVAL_DRAFTS=<write-*.json> AIFED_EVAL_RESCORE_JUDGE=openai:gpt-6.1-sol ... models-eval.ts rescore
 //
 // 🔴 정답 사례는 제품의 비공개 자료다. 이 저장소는 공개라서 사례 파일을 저장소 밖에서 읽고,
 //    결과 폴더도 저장소 밖으로 둔다. 저장소에 남기는 것은 집계 숫자뿐이다.
@@ -80,7 +82,9 @@ const WRITE_CONFIGS = [
     single('S-sonnet55', '단일 Sonnet 5.5', 'anthropic', 'claude-sonnet-5-5'),
 ];
 const JUDGES = [
-    { provider: 'openai', id: 'gpt-6-astra' },
+    // 2026-09-30: GPT-6 Astra($10/$50)가 평가 도중 OpenAI 잔액을 바닥냈다. 한 단계 아래 Sol 로도
+    // 판정 방향이 같았다(재채점). 비싼 심사 모델은 쓰지 않는다.
+    { provider: 'openai', id: 'gpt-6.1-sol' },
     { provider: 'google', id: 'gemini-3.1-pro-preview' },
 ];
 // ── 공용 ────────────────────────────────────────────────────────────────────
@@ -233,9 +237,9 @@ const JUDGE_SYS = '당신은 엄정한 의료기기 규제문서 품질 심사�
 function judgePrompt(task, a, b) {
     return `[작업]\n${task}\n\n[초안 A]\n${a}\n\n[초안 B]\n${b}\n\n각 초안을 4축(${AXES.join('·')}) 1~10 점으로 채점하고 종합 우수한 쪽을 고르시오. JSON 만 출력: {"a":{"완결성":n,"정확성":n,"규제정합":n,"명확성":n},"b":{...},"winner":"A"|"B"|"TIE"}`;
 }
-async function compare(task, base, cand) {
+async function compare(task, base, cand, judges = JUDGES) {
     const out = [];
-    for (const j of JUDGES) {
+    for (const j of judges) {
         for (const order of ['base-first', 'cand-first']) {
             const [a, b] = order === 'base-first' ? [base, cand] : [cand, base];
             try {
@@ -263,6 +267,18 @@ async function compare(task, base, cand) {
         }
     }
     return out;
+}
+function logComparison(key, rows) {
+    const all = rows.flatMap((x) => x.verdicts);
+    const vs = all.filter((v) => v.winner !== 'error');
+    const wins = vs.filter((v) => v.winner === 'cand').length;
+    const losses = vs.filter((v) => v.winner === 'base').length;
+    const delta = vs.reduce((s, v) => s + (v.candScore - v.baseScore), 0) / Math.max(1, vs.length) / 4;
+    const skipped = rows.filter((x) => x.skipped).length;
+    const byJudge = [...new Set(all.map((v) => v.judge))]
+        .map((j) => `${j} ${vs.filter((v) => v.judge === j).length}/${all.filter((v) => v.judge === j).length}`)
+        .join(' · ');
+    console.log(`[작성] ${key} 대 A · 비교 ${rows.length - skipped}과제(뺀 과제 ${skipped}) · 후보 승 ${wins} · 기준 승 ${losses} · 비김 ${vs.length - wins - losses} · 축 평균 차 ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}/10 · 유효 심사 ${byJudge}`);
 }
 // ── 실행 ────────────────────────────────────────────────────────────────────
 async function main() {
@@ -317,27 +333,84 @@ async function main() {
                     return { task: t.name, skipped: '잘림', verdicts: [] };
                 return { task: t.name, verdicts: await compare(t, a.text, b.text) };
             });
-            const rows = comparisons[c.key];
-            const vs = rows.flatMap((x) => x.verdicts).filter((v) => v.winner !== 'error');
-            const wins = vs.filter((v) => v.winner === 'cand').length;
-            const losses = vs.filter((v) => v.winner === 'base').length;
-            const delta = vs.reduce((s, v) => s + (v.candScore - v.baseScore), 0) / Math.max(1, vs.length) / 4;
-            const skipped = rows.filter((x) => x.skipped).length;
-            console.log(`[작성] ${c.key} 대 A · 비교 ${rows.length - skipped}과제(뺀 과제 ${skipped}) · 후보 승 ${wins} · 기준 승 ${losses} · 비김 ${vs.length - wins - losses} · 축 평균 차 ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}/10 · 심사 실패 ${rows.flatMap((x) => x.verdicts).length - vs.length}`);
+            logComparison(c.key, comparisons[c.key]);
         }
         writeFileSync(path.join(outDir, `write-${stamp}.json`), JSON.stringify({ body: BODY, drafts, comparisons }, null, 1));
     }
     // 운영 한도 점검: Q-Atelier 작성 도우미는 본문 한도 500 · 600 · 700토큰으로 부른다.
     // 지금 운영 구성(A)이 그 한도에서 잘리는지 센다(품질 비교는 하지 않는다).
     if (mode === 'prodcap' || mode === 'all') {
+        const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
         const failed = (e) => ({ text: '', ms: 0, cost: 0, degraded: true, cut: false, workerCuts: 0, error: String(e) });
         const out = {};
         for (const cap of [500, 600, 700]) {
             out[cap] = await withEnv(A.env, () => pool(WRITING_TASKS, 6, (t) => produce(A, t, cap).catch(failed)));
             const d = out[cap];
-            console.log(`[운영 한도 ${cap}] 최종본 잘림 ${d.filter((x) => x.cut).length}/${d.length} · 초안 잘림 ${d.reduce((s, x) => s + x.workerCuts, 0)}/${d.length * 3} · 빈 답 ${d.filter((x) => !x.text).length} · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)}`);
+            console.log(`[운영 한도 ${cap}] 최종본 잘림 ${d.filter((x) => x.cut).length}/${d.length} · 초안 잘림 ${d.reduce((s, x) => s + x.workerCuts, 0)}/${d.length * 3} · 빈 답 ${d.filter((x) => !x.text).length} · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)} · 중앙 ${(median(d.map((x) => x.ms)) / 1000).toFixed(1)}초 · 길이 중앙 ${median(d.map((x) => x.text.length))}자`);
         }
         writeFileSync(path.join(outDir, `prodcap-${stamp}.json`), JSON.stringify(out, null, 1));
+    }
+    // 초안 한도 비교: 운영 한도 600에서 지금 초안 규칙(환경변수)으로 A 구성을 돌리고,
+    // 예전 규칙(초안도 600)으로 만든 최종본(prodcap 저장본)과 두 심사 모델로 비교한다. 심사 비용까지 잰다.
+    if (mode === 'draftcap') {
+        const basePath = process.env.AIFED_EVAL_BASE;
+        if (!basePath)
+            throw new Error('AIFED_EVAL_BASE(prodcap-*.json)를 주십시오');
+        const cap = Number(process.env.AIFED_EVAL_CAP) || 600;
+        const base = JSON.parse(readFileSync(basePath, 'utf8'))[String(cap)];
+        if (!base || base.length !== WRITING_TASKS.length)
+            throw new Error(`저장본에 한도 ${cap} 결과가 없습니다`);
+        const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+        const failed = (e) => ({ text: '', ms: 0, cost: 0, degraded: true, cut: false, workerCuts: 0, error: String(e) });
+        const label = `초안 한도 ×${process.env.AIFED_DRAFT_HEADROOM || '1.5'} · 분량 안내 ${process.env.AIFED_DRAFT_HINT === '0' ? '끔' : '켬'}`;
+        const d = await withEnv(A.env, () => pool(WRITING_TASKS, 6, (t) => produce(A, t, cap).catch(failed)));
+        console.log(`[초안 한도] ${label} · 최종본 잘림 ${d.filter((x) => x.cut).length}/${d.length} · 초안 잘림 ${d.reduce((s, x) => s + x.workerCuts, 0)}/${d.length * 3} · 빈 답 ${d.filter((x) => !x.text).length} · 건당 $${(d.reduce((s, x) => s + x.cost, 0) / d.length).toFixed(4)} · 중앙 ${(median(d.map((x) => x.ms)) / 1000).toFixed(1)}초 · 길이 중앙 ${median(d.map((x) => x.text.length))}자`);
+        const { value: rows, cost: judgeCost } = await metered(() => pool(WRITING_TASKS, 4, async (t, i) => {
+            if (!base[i].text || !d[i].text)
+                return { task: t.name, skipped: '빈 답', verdicts: [] };
+            if (base[i].cut || d[i].cut)
+                return { task: t.name, skipped: '잘림', verdicts: [] };
+            return { task: t.name, verdicts: await compare(t, base[i].text, d[i].text) };
+        }));
+        logComparison(`초안 새 규칙(${label})`, rows);
+        console.log(`[초안 한도] 심사 비용 $${judgeCost.toFixed(2)} · 생성 비용 $${d.reduce((s, x) => s + x.cost, 0).toFixed(2)}`);
+        writeFileSync(path.join(outDir, `draftcap-${stamp}.json`), JSON.stringify({ label, cap, drafts: d, comparisons: rows }, null, 1));
+    }
+    // 다시 채점: 이미 써 둔 글(write-*.json)을 새로 쓰지 않고, 한 심사 모델의 판정만 바꿔 다시 매긴다.
+    // 2026-09-30 첫 재측정은 도중에 OpenAI 잔액이 바닥나 GPT 심사가 절반 넘게 비었다.
+    // 바꾸는 심사 모델과 같은 회사의 옛 판정을 빼고 새 판정을 넣는다(다른 회사 심사는 그대로 둔다).
+    if (mode === 'rescore') {
+        const draftsPath = process.env.AIFED_EVAL_DRAFTS;
+        const spec = process.env.AIFED_EVAL_RESCORE_JUDGE;
+        if (!draftsPath || !spec)
+            throw new Error('AIFED_EVAL_DRAFTS(write-*.json)와 AIFED_EVAL_RESCORE_JUDGE(회사:모델)를 주십시오');
+        const [provider, id] = spec.split(':');
+        if (!PRICE[id])
+            throw new Error(`${id} 의 단가가 PRICE 표에 없습니다`);
+        const judge = { provider, id };
+        const sameMaker = provider === 'openai' ? /^gpt/ : provider === 'google' ? /^gemini/ : /^claude/;
+        // 잔액이 없으면 수백 건이 모두 «심사 실패» 로 쌓인다. 한 번 불러 보고 시작한다.
+        await generateText({ model: languageModelById(provider, id), prompt: '1', maxOutputTokens: 16, maxRetries: 0 });
+        const saved = JSON.parse(readFileSync(draftsPath, 'utf8'));
+        const { value: rescored, cost: spent } = await metered(async () => {
+            const out = {};
+            for (const key of Object.keys(saved.comparisons)) {
+                out[key] = await pool(saved.comparisons[key], 4, async (row, i) => {
+                    if (row.skipped)
+                        return row;
+                    const t = WRITING_TASKS[i];
+                    if (t.name !== row.task)
+                        throw new Error(`과제 순서가 저장본과 다릅니다: ${t.name} ≠ ${row.task}`);
+                    const kept = row.verdicts.filter((v) => !sameMaker.test(v.judge));
+                    const fresh = await compare(t, saved.drafts.A[i].text, saved.drafts[key][i].text, [judge]);
+                    return { ...row, verdicts: [...kept, ...fresh] };
+                });
+                logComparison(key, out[key]);
+            }
+            return out;
+        });
+        console.log(`[다시 채점] ${id} · 쓴 돈 $${spent.toFixed(2)}`);
+        writeFileSync(path.join(outDir, `rescore-${stamp}.json`), JSON.stringify({ ...saved, comparisons: rescored, rescoredWith: id }, null, 1));
     }
     return 0;
 }

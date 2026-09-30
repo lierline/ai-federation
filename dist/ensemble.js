@@ -67,6 +67,24 @@ async function defaultCollect(o) {
     })));
     return { active: specs.map((s) => s.provider), drafts };
 }
+// 관리자 종합(tier 'head')에서 3사 초안은 중간 산출물이다. 최종본 한도(maxTokens)를 초안에 그대로
+// 주면 초안이 문장 중간에 잘린 채 관리자에게 간다. 2026-09-30 운영 한도(500 · 600 · 700) 실측에서
+// 초안 36건 중 24~28건이 잘렸다. 그래서 두 규칙을 재 봤지만(한도 600 · 12과제 · 심사 둘) 둘 다 기본으로 켜지 않는다.
+//   분량 안내 + 한도 1.5배: 잘림 25 → 12 · 건당 -9% · 시간 같음 · 그러나 예전 규칙에 18 대 30으로 짐(초안이 짧아 재료가 줆)
+//   안내 없이 한도 3배: 잘림 25 → 20 · 건당 +35% · 시간 +50% · 23 대 15로 조금 이김(최종본이 36% 길어 길이 쏠림을 못 뗌)
+// 기본값은 예전 동작(여유 1 · 안내 끔)이다. 환경변수 AIFED_DRAFT_HEADROOM · AIFED_DRAFT_HINT 로 켤 수 있다.
+/** 관리자 종합 앞의 초안 한도. 최종본 한도 × limits.draftHeadroom(기본 1). */
+export function draftBudget(bodyTokens) {
+    return Math.ceil(bodyTokens * limits.draftHeadroom());
+}
+/** 초안에 붙이는 분량 안내. 글자 수를 토큰 한도와 같은 수로 잡는다(맞는지는 운영 한도 점검의 잘림 수로 본다). */
+export function draftLengthHint(bodyTokens) {
+    return `\n\n[분량] 답은 한국어 약 ${bodyTokens}자 안에서 끝낸다. 문장을 끝맺지 못할 만큼 길게 쓰지 말고, 핵심부터 쓴다.`;
+}
+function draftOpts(o, bodyTokens) {
+    const system = limits.draftHint() ? o.system + draftLengthHint(bodyTokens) : o.system;
+    return { ...o, system, maxTokens: draftBudget(bodyTokens) };
+}
 function specProvider(p) {
     return p === 'claude' ? 'anthropic' : p === 'openai' ? 'openai' : 'google';
 }
@@ -81,7 +99,7 @@ export async function ensemble(opts, deps = {}) {
         const s = await single(opts);
         return { text: s.text, tier: 'single', fastModels: [s.provider], headUsed: false, degraded: false };
     }
-    const { active, drafts } = await collect(opts);
+    const { active, drafts } = await collect(opts.tier === 'head' ? draftOpts(opts, maxTok) : opts);
     if (drafts.length === 0) {
         const s = await single(opts);
         return { text: s.text, tier: opts.tier, fastModels: [], headUsed: false, degraded: true };
@@ -122,14 +140,7 @@ export async function ensembleStream(opts, deps = {}) {
     await syncModels();
     const maxTok = opts.maxTokens ?? 1600;
     const collect = deps.collect ?? defaultCollect;
-    const { active, drafts } = await collect({
-        system: opts.system,
-        prompt: opts.prompt,
-        tier: 'head',
-        maxTokens: maxTok,
-        fastTimeoutMs: opts.fastTimeoutMs,
-        operation: opts.operation,
-    });
+    const { active, drafts } = await collect(draftOpts({ system: opts.system, prompt: opts.prompt, tier: 'head', fastTimeoutMs: opts.fastTimeoutMs, operation: opts.operation }, maxTok));
     const headTimeout = opts.headTimeoutMs ?? 85_000;
     if (drafts.length === 0) {
         const pick = pickSingle();

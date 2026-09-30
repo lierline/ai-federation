@@ -100,3 +100,23 @@ describe('ensembleStream', () => {
     expect(quality).toEqual({ degraded: true, fastModels: ['claude', 'openai'], activeCount: 3, headUsed: true })
   })
 })
+
+describe('초안 한도 규칙', () => {
+  const seen = async (env: Record<string, string>) => {
+    Object.assign(process.env, env)
+    let got: { system: string; maxTokens?: number } | undefined
+    await ensemble(
+      { system: 's', prompt: 'p', tier: 'head', maxTokens: 600 },
+      { collect: async (o) => ((got = o), { active: ['claude'], drafts: [two[0]] }), synth: async () => '종합본' },
+    )
+    return got!
+  }
+  it('기본값은 예전 동작: 초안도 최종본 한도 그대로 · 안내 없음', async () => {
+    expect(await seen({})).toMatchObject({ system: 's', maxTokens: 600 })
+  })
+  it('환경변수로 켜면 한도에 여유를 두고 분량 안내를 붙인다', async () => {
+    const o = await seen({ AIFED_DRAFT_HEADROOM: '1.5', AIFED_DRAFT_HINT: '1' })
+    expect(o.maxTokens).toBe(900)
+    expect(o.system).toMatch(/^s\n\n\[분량\] 답은 한국어 약 600자/)
+  })
+})
