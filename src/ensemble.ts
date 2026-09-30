@@ -4,6 +4,7 @@ import { buildSynthesisPrompt, headOutputBudget, HEAD_SYNTHESIS_GUIDE, synthesiz
 import { limits } from './config.js'
 import { modelFor, type TextRole } from './registry.js'
 import { hasKey, languageModel, reportFailure, reportUsage, syncModels } from './providers.js'
+import { withAiOperation } from './usage-record.js'
 import type { EnsembleResult, EnsembleTier, ProviderId, WorkerResult } from './types.js'
 
 // =============================================================================
@@ -130,8 +131,12 @@ function specProvider(p: ProviderId) {
   return p === 'claude' ? 'anthropic' : p === 'openai' ? 'openai' : 'google'
 }
 
-/** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). */
-export async function ensemble(opts: EnsembleOpts, deps: EnsembleDeps = {}): Promise<EnsembleResult> {
+/** 비스트리밍 앙상블. JSON 응답 계열(assist-draft 등). 안에서 부른 모델 호출에 작업 이름을 붙여 기록한다. */
+export function ensemble(opts: EnsembleOpts, deps: EnsembleDeps = {}): Promise<EnsembleResult> {
+  return withAiOperation(opts.operation ?? 'ensemble', () => ensembleBody(opts, deps))
+}
+
+async function ensembleBody(opts: EnsembleOpts, deps: EnsembleDeps): Promise<EnsembleResult> {
   await syncModels()
   const collect = deps.collect ?? defaultCollect
   const synth = deps.synth ?? synthesize
@@ -201,9 +206,16 @@ export interface EnsembleQuality {
  * fast 가 전부 실패하면 단일 모델 스트림으로 폴백(degraded).
  * ⚠️ Head 가 스트리밍 도중 실패하는 것은 여기서 알 수 없다(onError 로 흐른다).
  */
-export async function ensembleStream(
+export function ensembleStream(
   opts: EnsembleStreamOpts,
   deps: Pick<EnsembleDeps, 'collect'> = {},
+): Promise<{ result: ReturnType<typeof streamText>; quality: EnsembleQuality }> {
+  return withAiOperation(opts.operation ?? 'ensemble', () => ensembleStreamBody(opts, deps))
+}
+
+async function ensembleStreamBody(
+  opts: EnsembleStreamOpts,
+  deps: Pick<EnsembleDeps, 'collect'>,
 ): Promise<{ result: ReturnType<typeof streamText>; quality: EnsembleQuality }> {
   await syncModels()
   const maxTok = opts.maxTokens ?? 1600
