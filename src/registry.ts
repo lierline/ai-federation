@@ -90,6 +90,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', provider: 'anthropic', price: { input: 2, output: 10 }, thinks: true },
   { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', provider: 'anthropic', price: { input: 5, output: 25 } },
   { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', provider: 'anthropic', price: { input: 4, output: 20 }, thinks: true },
+  { id: 'claude-fable-5-1', label: 'Claude Fable 5.1', provider: 'anthropic', price: { input: 10, output: 50 }, thinks: true },
   { id: 'gpt-4o-mini', label: 'GPT-4o mini', provider: 'openai', price: { input: 0.15, output: 0.6 } },
   { id: 'gpt-6-luna', label: 'GPT-6 Luna', provider: 'openai', price: { input: 0.1, output: 0.5 } },
   { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol', provider: 'openai', price: { input: 2, output: 10 } },
