@@ -54,6 +54,8 @@ export function envNameFor(role) {
 }
 export const MODEL_CATALOG = [
     { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic', price: { input: 1, output: 5 } },
+    // 프롬프트 10만 토큰 이하 단가. 넘으면 입력 $0.5 · 출력 $2.5 로 5배(공식 가격표 2026-10-08).
+    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', provider: 'anthropic', price: { input: 0.1, output: 0.5 }, thinks: true },
     { id: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5', provider: 'anthropic', price: { input: 3, output: 15 } },
     { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', provider: 'anthropic', price: { input: 2, output: 10 }, thinks: true },
     { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', provider: 'anthropic', price: { input: 5, output: 25 } },

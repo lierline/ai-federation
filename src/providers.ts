@@ -158,17 +158,17 @@ function gatewayProvider(): ReturnType<typeof createGateway> {
 
 /** 샘플링 값(temperature · topP · topK)을 거절하는 Claude 모델. */
 export function rejectsSampling(modelId: string): boolean {
-  return /claude-(opus-4-[7-9]|opus-[5-9]|sonnet-[5-9]|fable|mythos)/.test(modelId)
+  return /claude-(opus-4-[7-9]|opus-[5-9]|sonnet-[5-9]|haiku-[5-9]|fable|mythos)/.test(modelId)
 }
 
 /** 생각을 끄지 않으면(또는 끌 수 없으면) 기본으로 생각하는 Claude 모델. 출력 상한 안에서 생각 토큰을 쓴다. */
 export function thinksByDefault(modelId: string): boolean {
-  return /claude-(opus-[5-9]|sonnet-[5-9]|fable|mythos)/.test(modelId)
+  return /claude-(opus-[5-9]|sonnet-[5-9]|haiku-[5-9]|fable|mythos)/.test(modelId)
 }
 
 /** 구조화 출력을 모델 고유 기능(output_config.format)으로 보내야 하는 Claude 모델. */
 export function usesNativeStructuredOutput(modelId: string): boolean {
-  return /claude-(haiku-4-5|sonnet-4-[5-9]|opus-4-[5-9]|opus-[5-9]|sonnet-[5-9]|fable|mythos)/.test(modelId)
+  return /claude-(haiku-4-5|haiku-[5-9]|sonnet-4-[5-9]|opus-4-[5-9]|opus-[5-9]|sonnet-[5-9]|fable|mythos)/.test(modelId)
 }
 
 function claudeGuard(modelId: string): LanguageModelMiddleware {

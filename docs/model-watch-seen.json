@@ -4,16 +4,38 @@
       "date": "2026-10-05",
       "provider": "anthropic",
       "id": "claude-fable-5-1",
-      "price": { "input": 10, "output": 50 },
+      "price": {
+        "input": 10,
+        "output": 50
+      },
       "note": "관리자(head) 대신 후보. 건당 관리자 비용 약 $0.083 대 Opus 5.5 약 $0.044(1.9배), 중앙 지연 29.5초 대 26.2초, 잘림 없음, 본문은 더 짧음(약 1,100자 대 1,600자). temperature · 강제 도구 호출은 400 거절(providers.ts 정규식에 이미 포함). 평가 대기."
     },
     {
       "date": "2026-10-05",
       "provider": "openai",
       "id": "gpt-6-astra",
-      "price": { "input": 10, "output": 50 },
+      "price": {
+        "input": 10,
+        "output": 50
+      },
       "note": "2026-09-30 평가에서 이미 사용, 잔액 소진으로 심사 모델에서 제외. 목록에는 없음."
+    },
+    {
+      "date": "2026-10-08",
+      "provider": "anthropic",
+      "id": "claude-haiku-5-5",
+      "price": {
+        "input": 0.1,
+        "output": 0.5
+      },
+      "note": "fast / worker.claude 후보. 10만 토큰 초과 프롬프트는 입력 0.5 · 출력 2.5. 건당 약 $0.0006~0.0012 대 Haiku 4.5 약 $0.0044(약 4~7배 저렴). 기본으로 생각함(1,200토큰 한도에서는 생각만 하다 잘림, 한도 9,200에서 끝까지 씀). temperature 400 거절, 강제 도구 호출 허용, 구조화 출력 가능. 목록에만 추가, 역할 기본값은 그대로(Q-Match 평가 대기)."
     }
   ],
-  "ignored": ["claude-opus-5", "claude-sonnet-5", "gpt-6-sol", "gpt-5.6-*", "gemini-3.5/3.6/3.7-flash(3.8 Flash 이전 판)"]
+  "ignored": [
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "gpt-6-sol",
+    "gpt-5.6-*",
+    "gemini-3.5/3.6/3.7-flash(3.8 Flash 이전 판)"
+  ]
 }

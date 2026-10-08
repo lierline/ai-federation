@@ -51,7 +51,7 @@ describe('registry', () => {
 
 describe('Claude 모델 판별', () => {
   it('샘플링 값을 거절하는 모델', () => {
-    for (const id of ['claude-opus-4-7', 'claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-1'])
+    for (const id of ['claude-opus-4-7', 'claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'])
       expect(rejectsSampling(id), id).toBe(true)
     for (const id of ['claude-haiku-4-5-20251001', 'claude-sonnet-4-5-20250929', 'claude-sonnet-4-6', 'claude-opus-4-6'])
       expect(rejectsSampling(id), id).toBe(false)
@@ -64,6 +64,8 @@ describe('Claude 모델 판별', () => {
   it('기본으로 생각하는 모델', () => {
     expect(thinksByDefault('claude-opus-5-5')).toBe(true)
     expect(thinksByDefault('claude-sonnet-5-5')).toBe(true)
+    expect(thinksByDefault('claude-haiku-5-5')).toBe(true)
+    expect(thinksByDefault('claude-haiku-4-5-20251001')).toBe(false)
     expect(thinksByDefault('claude-opus-4-8')).toBe(false)
     expect(thinksByDefault('claude-haiku-4-5-20251001')).toBe(false)
   })
