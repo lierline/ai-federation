@@ -1,6 +1,7 @@
 {
   "name": "@lierline/ai-federation",
   "version": "0.3.0",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
